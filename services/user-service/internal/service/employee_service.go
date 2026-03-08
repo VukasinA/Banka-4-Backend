@@ -28,6 +28,13 @@ func (s *EmployeeService) Register(ctx context.Context, req *dto.CreateEmployeeR
 		return nil, errors.ConflictErr("email already in use")
 	}
 
+	existingByUsername, err := s.repo.FindByUserName(ctx, req.Username)
+	if err != nil {
+		return nil, errors.InternalErr(err)
+	}
+	if existingByUsername != nil {
+		return nil, errors.ConflictErr("username already in use")
+	}
 	employee := &model.Employee{
 		FirstName:   req.FirstName,
 		LastName:    req.LastName,

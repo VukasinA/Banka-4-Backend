@@ -3,7 +3,6 @@ package repository
 import (
 	"context"
 	"errors"
-
 	"user-service/internal/model"
 
 	"gorm.io/gorm"
@@ -33,5 +32,17 @@ func (r *employeeRepository) FindByEmail(ctx context.Context, email string) (*mo
 		return nil, nil
 	}
 
+	return &employee, result.Error
+}
+
+func (r *employeeRepository) FindByUserName(ctx context.Context, userName string) (*model.Employee, error) {
+	var employee model.Employee
+	result := r.db.
+		WithContext(ctx).
+		Where("username = ?", userName).
+		First(&employee)
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
 	return &employee, result.Error
 }

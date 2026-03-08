@@ -9,7 +9,9 @@ require (
 	golang.org/x/crypto v0.48.0
 	gorm.io/gorm v1.31.1
 )
+
 replace github.com/avelickovic/Banka-4-Backend => ../path-to-your-module
+
 require (
 	github.com/bytedance/gopkg v0.1.3 // indirect
 	github.com/bytedance/sonic v1.15.0 // indirect
