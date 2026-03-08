@@ -6,8 +6,10 @@ import (
 	"user-service/internal/config"
 	"user-service/internal/handler"
 	"user-service/internal/model"
+	"user-service/internal/repository"
 	"user-service/internal/seed"
 	"user-service/internal/server"
+	"user-service/internal/service"
 
 	"go.uber.org/fx"
 	"gorm.io/gorm"
@@ -20,12 +22,14 @@ func main() {
 			func(cfg *config.Configuration) (*gorm.DB, error) {
 				return db.New(cfg.DB.DSN())
 			},
+			repository.NewEmployeeRepository,
+			service.NewEmployeeService,
+			handler.NewEmployeeHandler,
 			handler.NewHealthHandler,
 		),
 		fx.Invoke(func(cfg *config.Configuration) error {
 			return logging.Init(cfg.Env)
 		}),
-		// Seed funkcija
 		fx.Invoke(func(db *gorm.DB) error {
 			if err := db.AutoMigrate(&model.Employee{}, &model.Position{}); err != nil {
 				return err
