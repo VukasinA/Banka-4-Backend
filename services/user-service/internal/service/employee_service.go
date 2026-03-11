@@ -7,6 +7,9 @@ import (
 
 	"context"
 	"fmt"
+	"log"
+	"net/url"
+	"strings"
 	"time"
 
 	"crypto/rand"
@@ -25,12 +28,12 @@ type EmployeeService struct {
 	tokenRepo      repository.ActivationTokenRepository
 	resetTokenRepo repository.ResetTokenRepository
 	positionRepo   repository.PositionRepository
-	emailService   *EmailService
+	emailService   Mailer
 	cfg            *config.Configuration
 }
 
 func NewEmployeeService(
-	repo repository.EmployeeRepository, tokenRepo repository.ActivationTokenRepository, resetTokenRepo repository.ResetTokenRepository, positionRepo repository.PositionRepository, emailService *EmailService, cfg *config.Configuration) *EmployeeService {
+	repo repository.EmployeeRepository, tokenRepo repository.ActivationTokenRepository, resetTokenRepo repository.ResetTokenRepository, positionRepo repository.PositionRepository, emailService Mailer, cfg *config.Configuration) *EmployeeService {
 	return &EmployeeService{
 		repo:           repo,
 		tokenRepo:      tokenRepo,
@@ -96,13 +99,16 @@ func (s *EmployeeService) Register(ctx context.Context, req *dto.CreateEmployeeR
 		return nil, errors.InternalErr(err)
 	}
 
-	link := fmt.Sprintf("http://localhost:8080/activate?token=%s", tokenStr)
+	activationBase := strings.TrimRight(s.cfg.URLs.ActivationBaseURL, "/")
+	link := fmt.Sprintf("%s/activate?token=%s", activationBase, url.QueryEscape(tokenStr))
 
-	s.emailService.Send(
+	if err := s.emailService.Send(
 		employee.Email,
 		"Welcome!",
 		fmt.Sprintf("Kliknite ovde da postavite lozinku: %s", link),
-	)
+	); err != nil {
+		return nil, errors.ServiceUnavailableErr(err)
+	}
 
 	return employee, nil
 }
@@ -143,7 +149,9 @@ func (s *EmployeeService) ActivateAccount(ctx context.Context, tokenStr, passwor
 	_ = s.tokenRepo.Delete(ctx, activationToken)
 
 	// Pošalji mejl
-	s.emailService.Send(employee.Email, "Account activated", "Vaš nalog je uspešno aktiviran.")
+	if err := s.emailService.Send(employee.Email, "Account activated", "Vaš nalog je uspešno aktiviran."); err != nil {
+		log.Printf("failed to send account activation confirmation email to employee_id=%d: %v", employee.EmployeeID, err)
+	}
 
 	return nil
 }
@@ -253,12 +261,15 @@ func (s *EmployeeService) RequestPasswordReset(ctx context.Context, email string
 	}
 
 	// Šaljemo link sa tokenom na email
-	link := fmt.Sprintf("http://localhost:8080/reset-password?token=%s", token)
-	s.emailService.Send(
+	resetBase := strings.TrimRight(s.cfg.URLs.ResetBaseURL, "/")
+	link := fmt.Sprintf("%s/reset-password?token=%s", resetBase, url.QueryEscape(token))
+	if err := s.emailService.Send(
 		employee.Email,
 		"Password reset",
 		fmt.Sprintf("Kliknite ovde da resetujete lozinku: %s", link),
-	)
+	); err != nil {
+		log.Printf("failed to send password reset email to employee_id=%d: %v", employee.EmployeeID, err)
+	}
 
 	return nil
 }
@@ -304,11 +315,13 @@ func (s *EmployeeService) ConfirmPasswordReset(ctx context.Context, token, newPa
 	_ = s.resetTokenRepo.DeleteByEmployeeID(ctx, employee.EmployeeID)
 
 	// Pošalji potvrdu na email
-	s.emailService.Send(
+	if err := s.emailService.Send(
 		employee.Email,
 		"Password changed",
 		"Vaša lozinka je uspešno promenjena.",
-	)
+	); err != nil {
+		log.Printf("failed to send password changed confirmation email to employee_id=%d: %v", employee.EmployeeID, err)
+	}
 
 	return nil
 }
