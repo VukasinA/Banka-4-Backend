@@ -33,12 +33,16 @@ func (es *EmailService) Send(to, subject, body string) error {
 	pass := es.cfg.SMTP.Pass
 	from := strings.TrimSpace(es.cfg.SMTP.From)
 
-	if host == "" || port == "" || user == "" || pass == "" || from == "" {
+	if host == "" || port == "" || from == "" {
 		return fmt.Errorf("smtp configuration is incomplete")
 	}
 
 	addr := net.JoinHostPort(host, port)
-	auth := smtp.PlainAuth("", user, pass, host)
+	var auth smtp.Auth
+	// Only use authentication if both user and pass are provided
+	if user != "" && pass != "" {
+		auth = smtp.PlainAuth("", user, pass, host)
+	}
 
 	msg := strings.Join([]string{
 		fmt.Sprintf("From: %s", from),
