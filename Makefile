@@ -13,3 +13,9 @@ docker-down-rm-vol:
 swagger-docs:
 	cd services/user-service && swag init -g cmd/main.go -d ./,../../common
 	cd services/banking-service && swag init -g cmd/main.go -d ./,../../common
+
+test:
+	go test ./common/... ./services/user-service/... ./services/banking-service/...
+
+test-integration:
+	go test -tags=integration ./common/... ./services/user-service/... ./services/banking-service/...

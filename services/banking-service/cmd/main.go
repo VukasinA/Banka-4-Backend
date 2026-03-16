@@ -2,17 +2,24 @@ package main
 
 import (
 	"banking-service/internal/client"
+	clientgrpc "banking-service/internal/client/grpc"
 	"banking-service/internal/config"
 	"banking-service/internal/handler"
+	"banking-service/internal/model"
 	"banking-service/internal/permission"
+	"banking-service/internal/repository"
+	"banking-service/internal/seed"
 	"banking-service/internal/server"
+	"banking-service/internal/service"
 	"common/pkg/auth"
+	"common/pkg/db"
 	"common/pkg/jwt"
 	"common/pkg/logging"
 	"common/pkg/pb"
 
 	"go.uber.org/fx"
 	"google.golang.org/grpc"
+	"gorm.io/gorm"
 )
 
 // @title Banking Service API
@@ -26,20 +33,44 @@ func main() {
 	fx.New(
 		fx.Provide(
 			config.Load,
+			func(cfg *config.Configuration) (*gorm.DB, error) {
+				return db.New(cfg.DB.DSN())
+			},
 			func(cfg *config.Configuration) auth.TokenVerifier {
 				return jwt.NewJWTVerifier(cfg.JWTSecret)
 			},
-			client.NewUserServiceClient,
+			client.NewUserServiceConnection,
+			fx.Annotate(
+				clientgrpc.NewUserServiceClient,
+				fx.As(new(client.UserClient)),
+			),
 			func(conn *grpc.ClientConn) pb.PermissionServiceClient {
 				return pb.NewPermissionServiceClient(conn)
 			},
-			func(client pb.PermissionServiceClient) auth.PermissionProvider {
-				return permission.NewGrpcPermissionProvider(client)
+			func(c pb.PermissionServiceClient) auth.PermissionProvider {
+				return permission.NewGrpcPermissionProvider(c)
 			},
 			handler.NewHealthHandler,
+			repository.NewAccountRepository,
+			repository.NewCompanyRepository,
+			service.NewAccountService,
+			service.NewCompanyService,
+			handler.NewAccountHandler,
+			handler.NewCompanyHandler,
 		),
 		fx.Invoke(func(cfg *config.Configuration) error {
 			return logging.Init(cfg.Env)
+		}),
+		fx.Invoke(func(db *gorm.DB) error {
+			if err := db.AutoMigrate(
+				&model.Currency{},
+				&model.WorkCode{},
+				&model.Company{},
+				&model.Account{},
+			); err != nil {
+				return err
+			}
+			return seed.Run(db)
 		}),
 		fx.Invoke(server.NewServer),
 	).Run()

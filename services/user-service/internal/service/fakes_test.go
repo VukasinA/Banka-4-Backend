@@ -96,6 +96,7 @@ func (f *fakeEmployeeRepo) GetAll(_ context.Context, _, _, _, _ string, _, _ int
 }
 
 type fakeClientRepo struct {
+	byID         *model.Client
 	byIdentityID *model.Client
 
 	findErr   error
@@ -111,6 +112,10 @@ func (f *fakeClientRepo) Create(_ context.Context, client *model.Client) error {
 
 func (f *fakeClientRepo) FindByIdentityID(_ context.Context, _ uint) (*model.Client, error) {
 	return f.byIdentityID, f.findErr
+}
+
+func (f *fakeClientRepo) FindByID(_ context.Context, id uint) (*model.Client, error) {
+	return f.byID, f.findErr
 }
 
 type fakeActivationTokenRepo struct {
