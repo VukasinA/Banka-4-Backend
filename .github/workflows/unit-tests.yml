@@ -14,17 +14,34 @@ jobs:
       uses: actions/checkout@v5
 
     - name: Set up Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
         go-version: '1.26'
     
     - name: Run unit tests
       run: |
+        set +e
+        failed=0
         echo "::group::Running unit tests for ./common/..."
         go test -v ./common/...
-        echo "::endgroup::"
+        if [ $? -ne 0 ]; then
+          echo "::endgroup::"
+          echo "::error::Failed to build $service"
+          failed=1
+        else
+          echo "::endgroup::"
+        fi
         for service in $(ls -d ./services/*/); do
           echo "::group::Running unit tests for $service..."
           go test -v $service...
-          echo "::endgroup::"
+          if [ $? -ne 0 ]; then
+            echo "::endgroup::"
+            echo "::error::Failed to build $service"
+            failed=1
+          else
+            echo "::endgroup::"
+          fi
         done
+        if [ $failed != 0 ]; then
+          exit 1
+        fi
