@@ -2,6 +2,7 @@ package repository
 
 import (
 	"banking-service/internal/model"
+	"context"
 
 	"gorm.io/gorm"
 )
@@ -14,16 +15,18 @@ func NewPaymentRepository(db *gorm.DB) PaymentRepository {
 	return &paymentRepository{db: db}
 }
 
-func (r *paymentRepository) Create(payment *model.Payment) error {
-	return r.db.Create(payment).Error
+func (r *paymentRepository) Create(ctx context.Context, payment *model.Payment) error {
+	return r.db.WithContext(ctx).Create(payment).Error
 }
 
-func (r *paymentRepository) GetByID(id uint) (*model.Payment, error) {
+func (r *paymentRepository) GetByID(ctx context.Context, id uint) (*model.Payment, error) {
 	var payment model.Payment
-	err := r.db.First(&payment, id).Error
-	return &payment, err
+	if err := r.db.WithContext(ctx).First(&payment, id).Error; err != nil {
+		return nil, err
+	}
+	return &payment, nil
 }
 
-func (r *paymentRepository) Update(payment *model.Payment) error {
-	return r.db.Save(payment).Error
+func (r *paymentRepository) Update(ctx context.Context, payment *model.Payment) error {
+	return r.db.WithContext(ctx).Save(payment).Error
 }

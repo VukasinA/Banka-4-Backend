@@ -4,6 +4,7 @@ import (
 	"banking-service/internal/dto"
 	"banking-service/internal/model"
 	"banking-service/internal/repository"
+	"context"
 	"errors"
 	"testing"
 
@@ -18,7 +19,7 @@ type fakePaymentRepo struct {
 	payment   *model.Payment
 }
 
-func (f *fakePaymentRepo) Create(p *model.Payment) error {
+func (f *fakePaymentRepo) Create(ctx context.Context, p *model.Payment) error {
 	if f.createErr != nil {
 		return f.createErr
 	}
@@ -27,14 +28,14 @@ func (f *fakePaymentRepo) Create(p *model.Payment) error {
 	return nil
 }
 
-func (f *fakePaymentRepo) GetByID(id uint) (*model.Payment, error) {
+func (f *fakePaymentRepo) GetByID(ctx context.Context, id uint) (*model.Payment, error) {
 	if f.getErr != nil {
 		return nil, f.getErr
 	}
 	return f.payment, nil
 }
 
-func (f *fakePaymentRepo) Update(p *model.Payment) error {
+func (f *fakePaymentRepo) Update(ctx context.Context, p *model.Payment) error {
 	f.payment = p
 	return nil
 }
@@ -52,14 +53,14 @@ func TestCreatePayment(t *testing.T) {
 	svc := newPaymentService(repo)
 
 	req := dto.CreatePaymentRequest{
-		RecipientName:    "John Doe",
-		RecipientAccount: "12345678",
-		Amount:           100,
-		PayerAccount:     "87654321",
-		Currency:         "RSD",
+		RecipientName:          "John Doe",
+		RecipientAccountNumber: "12345678",
+		Amount:                 100,
+		PayerAccount:           "87654321",
+		Currency:               "RSD",
 	}
 
-	payment, err := svc.CreatePayment(req)
+	payment, err := svc.CreatePayment(context.Background(), req)
 	require.NoError(t, err)
 	require.Equal(t, model.PaymentProcessing, payment.Status)
 	require.Equal(t, "John Doe", payment.RecipientName)
@@ -71,7 +72,7 @@ func TestVerifyPayment_Success(t *testing.T) {
 	}
 	svc := newPaymentService(repo)
 
-	p, err := svc.VerifyPayment(1, "1234")
+	p, err := svc.VerifyPayment(context.Background(), 1, "1234")
 	require.NoError(t, err)
 	require.Equal(t, model.PaymentCompleted, p.Status)
 }
@@ -82,7 +83,7 @@ func TestVerifyPayment_Rejected(t *testing.T) {
 	}
 	svc := newPaymentService(repo)
 
-	p, err := svc.VerifyPayment(1, "0000")
+	p, err := svc.VerifyPayment(context.Background(), 1, "0000")
 	require.NoError(t, err)
 	require.Equal(t, model.PaymentRejected, p.Status)
 }
@@ -92,14 +93,14 @@ func TestCreatePayment_Error(t *testing.T) {
 	svc := newPaymentService(repo)
 
 	req := dto.CreatePaymentRequest{
-		RecipientName:    "John Doe",
-		RecipientAccount: "12345678",
-		Amount:           100,
-		PayerAccount:     "87654321",
-		Currency:         "RSD",
+		RecipientName:          "John Doe",
+		RecipientAccountNumber: "12345678",
+		Amount:                 100,
+		PayerAccount:           "87654321",
+		Currency:               "RSD",
 	}
 
-	p, err := svc.CreatePayment(req)
+	p, err := svc.CreatePayment(context.Background(), req)
 	require.Nil(t, p)
 	require.Error(t, err)
 	require.Equal(t, "db error", err.Error())

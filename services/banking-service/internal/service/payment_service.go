@@ -4,6 +4,8 @@ import (
 	"banking-service/internal/dto"
 	"banking-service/internal/model"
 	"banking-service/internal/repository"
+	"common/pkg/errors"
+	"context"
 )
 
 type PaymentService struct {
@@ -14,7 +16,7 @@ func NewPaymentService(repo repository.PaymentRepository) *PaymentService {
 	return &PaymentService{repo: repo}
 }
 
-func (s *PaymentService) CreatePayment(req dto.CreatePaymentRequest) (*model.Payment, error) {
+func (s *PaymentService) CreatePayment(ctx context.Context, req dto.CreatePaymentRequest) (*model.Payment, error) {
 
 	// TODO: proveriti sredstva (#45)
 	// TODO: proveriti limit
@@ -24,7 +26,7 @@ func (s *PaymentService) CreatePayment(req dto.CreatePaymentRequest) (*model.Pay
 
 	payment := &model.Payment{
 		RecipientName:    req.RecipientName,
-		RecipientAccount: req.RecipientAccount,
+		RecipientAccount: req.RecipientAccountNumber,
 		Amount:           req.Amount,
 		ReferenceNumber:  req.ReferenceNumber,
 		PaymentCode:      req.PaymentCode,
@@ -34,19 +36,19 @@ func (s *PaymentService) CreatePayment(req dto.CreatePaymentRequest) (*model.Pay
 		Status:           model.PaymentProcessing,
 	}
 
-	err := s.repo.Create(payment)
+	err := s.repo.Create(ctx, payment)
 	if err != nil {
-		return nil, err
+		return nil, errors.InternalErr(err)
 	}
 
 	return payment, nil
 }
 
-func (s *PaymentService) VerifyPayment(id uint, code string) (*model.Payment, error) {
+func (s *PaymentService) VerifyPayment(ctx context.Context, id uint, code string) (*model.Payment, error) {
 
-	payment, err := s.repo.GetByID(id)
+	payment, err := s.repo.GetByID(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, errors.InternalErr(err)
 	}
 
 	// TODO: mobile verification
@@ -59,9 +61,9 @@ func (s *PaymentService) VerifyPayment(id uint, code string) (*model.Payment, er
 		payment.Status = model.PaymentRejected
 	}
 
-	err = s.repo.Update(payment)
+	err = s.repo.Update(ctx, payment)
 	if err != nil {
-		return nil, err
+		return nil, errors.InternalErr(err)
 	}
 
 	return payment, nil

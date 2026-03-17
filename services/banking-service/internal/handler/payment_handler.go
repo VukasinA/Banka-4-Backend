@@ -3,6 +3,7 @@ package handler
 import (
 	"banking-service/internal/dto"
 	"banking-service/internal/service"
+	"common/pkg/errors"
 	"net/http"
 	"strconv"
 
@@ -21,13 +22,13 @@ func (h *PaymentHandler) CreatePayment(c *gin.Context) {
 	var req dto.CreatePaymentRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.Error(err)
+		c.Error(errors.BadRequestErr(err.Error()))
 		return
 	}
 
-	payment, err := h.service.CreatePayment(req)
+	payment, err := h.service.CreatePayment(c.Request.Context(), req)
 	if err != nil {
-		c.Error(err)
+		c.Error(errors.InternalErr(err))
 		return
 	}
 
@@ -38,24 +39,21 @@ func (h *PaymentHandler) CreatePayment(c *gin.Context) {
 }
 
 func (h *PaymentHandler) VerifyPayment(c *gin.Context) {
-	idParam := c.Param("id")
-
-	id, err := strconv.Atoi(idParam)
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.Error(err)
+		c.Error(errors.BadRequestErr("invalid payment ID"))
 		return
 	}
 
 	var req dto.VerifyPaymentRequest
-
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.Error(err)
+		c.Error(errors.BadRequestErr(err.Error()))
 		return
 	}
 
-	payment, err := h.service.VerifyPayment(uint(id), req.Code)
+	payment, err := h.service.VerifyPayment(c.Request.Context(), uint(id), req.Code)
 	if err != nil {
-		c.Error(err)
+		c.Error(errors.InternalErr(err))
 		return
 	}
 
