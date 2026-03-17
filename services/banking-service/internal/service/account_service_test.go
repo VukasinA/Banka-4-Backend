@@ -30,6 +30,10 @@ func (r *fakeAccountRepo) AccountNumberExists(_ context.Context, _ string) (bool
 	return r.accNumExists, r.accNumExistsErr
 }
 
+func (r *fakeAccountRepo) FindByAccountNumber(_ context.Context, _ string) (*model.Account, error) {
+	return nil, nil
+}
+
 
 type fakeAccountUserClient struct {
 	clientErr   error
