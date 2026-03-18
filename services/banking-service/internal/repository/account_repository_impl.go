@@ -36,7 +36,7 @@ func (r *accountRepository) FindByAccountNumber(ctx context.Context, accountNumb
 	db := db.DBFromContext(ctx, r.db)
 
 	var account model.Account
-	if err := db.WithContext(ctx).First(&account, accountNumber).Error; err != nil {
+	if err := db.WithContext(ctx).Preload("Currency").First(&account, accountNumber).Error; err != nil {
 		return nil, err
 	}
 	return &account, nil
@@ -45,7 +45,7 @@ func (r *accountRepository) FindByAccountNumber(ctx context.Context, accountNumb
 func (r *accountRepository) UpdateBalance(ctx context.Context, account *model.Account) error {
   db := db.DBFromContext(ctx, r.db)
   
-	return r.db.WithContext(ctx).Model(account).Updates(map[string]interface{}{
+	return db.WithContext(ctx).Model(account).Updates(map[string]interface{}{
 		"balance":           account.Balance,
 		"available_balance": account.AvailableBalance,
 		"daily_spending":    account.DailySpending,

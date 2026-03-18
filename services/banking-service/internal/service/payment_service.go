@@ -9,23 +9,26 @@ import (
 )
 
 type PaymentService struct {
-	paymentRepo     repository.PaymentRepository
-	transactionRepo repository.TransactionRepository
-	accountRepo     repository.AccountRepository
-	exchangeService CurrencyConverter
+	paymentRepo          repository.PaymentRepository
+	transactionRepo      repository.TransactionRepository
+	accountRepo          repository.AccountRepository
+	exchangeService      CurrencyConverter
+	transactionProcessor *TransactionProcessor
 }
 
 func NewPaymentService(
-	paymentRepo repository.PaymentRepository,
-	transactionRepo repository.TransactionRepository,
-	accountRepo repository.AccountRepository,
-	exchangeService CurrencyConverter,
+	paymentRepo          repository.PaymentRepository,
+	transactionRepo      repository.TransactionRepository,
+	accountRepo          repository.AccountRepository,
+	exchangeService      CurrencyConverter,
+	transactionProcessor *TransactionProcessor,
 ) *PaymentService {
 	return &PaymentService{
-		paymentRepo:     paymentRepo,
-		transactionRepo: transactionRepo,
-		accountRepo:     accountRepo,
-		exchangeService: exchangeService,
+		paymentRepo:          paymentRepo,
+		transactionRepo:      transactionRepo,
+		accountRepo:          accountRepo,
+		exchangeService:      exchangeService,
+		transactionProcessor: transactionProcessor,
 	}
 }
 
@@ -41,6 +44,10 @@ func (s *PaymentService) CreatePayment(ctx context.Context, req dto.CreatePaymen
 	recipientAccount, err := s.accountRepo.FindByAccountNumber(ctx, req.RecipientAccountNumber)
 	if err != nil {
 		return nil, errors.NotFoundErr("recipient account not found")
+	}
+
+	if recipientAccount.ClientID == payerAccount.ClientID {
+		return nil, errors.BadRequestErr("cannot make payment for same client accounts, that is a transfer")
 	}
 
 	// Proveri dovoljno sredstava
@@ -101,7 +108,6 @@ func (s *PaymentService) CreatePayment(ctx context.Context, req dto.CreatePaymen
 }
 
 func (s *PaymentService) VerifyPayment(ctx context.Context, id uint, code string) (*model.Payment, error) {
-
 	payment, err := s.paymentRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, errors.NotFoundErr("payment not found")
@@ -114,44 +120,10 @@ func (s *PaymentService) VerifyPayment(ctx context.Context, id uint, code string
 
 	// TODO: mobile verification (#56) - verifikacija putem mobilne aplikacije
 
-	// Skini sredstva sa payer racuna
-	payerAccount, err := s.accountRepo.FindByAccountNumber(ctx, transaction.PayerAccountNumber)
+	// Process transaction
+	err = s.transactionProcessor.Process(ctx, transaction.TransactionID)
 	if err != nil {
-		return nil, errors.InternalErr(err)
-	}
-
-	payerAccount.Balance -= transaction.StartAmount
-	payerAccount.AvailableBalance -= transaction.StartAmount
-	payerAccount.DailySpending += transaction.StartAmount
-	payerAccount.MonthlySpending += transaction.StartAmount
-
-	if err := s.accountRepo.UpdateBalance(ctx, payerAccount); err != nil {
-		transaction.Status = model.TransactionRejected
-		_ = s.transactionRepo.Update(ctx, transaction)
-		return nil, errors.InternalErr(err)
-	}
-
-	// Dodaj sredstva na recipient racun
-	recipientAccount, err := s.accountRepo.FindByAccountNumber(ctx, transaction.RecipientAccountNumber)
-	if err != nil {
-		return nil, errors.InternalErr(err)
-	}
-
-	recipientAccount.Balance += transaction.EndAmount
-	recipientAccount.AvailableBalance += transaction.EndAmount
-
-	if err := s.accountRepo.UpdateBalance(ctx, recipientAccount); err != nil {
-		return nil, errors.InternalErr(err)
-	}
-
-	// Oznaci transakciju kao completed
-	transaction.Status = model.TransactionCompleted
-	if err := s.transactionRepo.Update(ctx, transaction); err != nil {
-		return nil, errors.InternalErr(err)
-	}
-
-	if err := s.paymentRepo.Update(ctx, payment); err != nil {
-		return nil, errors.InternalErr(err)
+		return nil, err
 	}
 
 	return payment, nil

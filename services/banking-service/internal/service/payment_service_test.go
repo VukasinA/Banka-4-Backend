@@ -143,6 +143,7 @@ func newTestPaymentService(
 func TestCreatePayment_Success(t *testing.T) {
 	payerAccount := &model.Account{
 		AccountNumber:    "87654321",
+		ClientID:         1,
 		Balance:          10000,
 		AvailableBalance: 10000,
 		DailyLimit:       250000,
@@ -153,6 +154,7 @@ func TestCreatePayment_Success(t *testing.T) {
 	}
 	recipientAccount := &model.Account{
 		AccountNumber: "12345678",
+		ClientID:      2,
 		Currency:      model.Currency{Code: model.RSD},
 	}
 
@@ -168,7 +170,6 @@ func TestCreatePayment_Success(t *testing.T) {
 		RecipientAccountNumber: "12345678",
 		Amount:                 100,
 		PayerAccountNumber:     "87654321",
-		CurrencyCode:           model.RSD,
 	}
 
 	payment, err := svc.CreatePayment(context.Background(), req)
@@ -179,6 +180,7 @@ func TestCreatePayment_Success(t *testing.T) {
 func TestCreatePayment_InsufficientFunds(t *testing.T) {
 	payerAccount := &model.Account{
 		AccountNumber:    "87654321",
+		ClientID:         1,
 		Balance:          50,
 		AvailableBalance: 50,
 		DailyLimit:       250000,
@@ -187,6 +189,7 @@ func TestCreatePayment_InsufficientFunds(t *testing.T) {
 	}
 	recipientAccount := &model.Account{
 		AccountNumber: "12345678",
+		ClientID:      2,
 		Currency:      model.Currency{Code: model.RSD},
 	}
 
@@ -202,7 +205,6 @@ func TestCreatePayment_InsufficientFunds(t *testing.T) {
 		RecipientAccountNumber: "12345678",
 		Amount:                 100,
 		PayerAccountNumber:     "87654321",
-		CurrencyCode:           model.RSD,
 	}
 
 	payment, err := svc.CreatePayment(context.Background(), req)
@@ -214,6 +216,7 @@ func TestCreatePayment_InsufficientFunds(t *testing.T) {
 func TestCreatePayment_DailyLimitExceeded(t *testing.T) {
 	payerAccount := &model.Account{
 		AccountNumber:    "87654321",
+		ClientID:         1,
 		Balance:          500000,
 		AvailableBalance: 500000,
 		DailyLimit:       1000,
@@ -224,6 +227,7 @@ func TestCreatePayment_DailyLimitExceeded(t *testing.T) {
 	}
 	recipientAccount := &model.Account{
 		AccountNumber: "12345678",
+		ClientID:      2,
 		Currency:      model.Currency{Code: model.RSD},
 	}
 
@@ -239,7 +243,6 @@ func TestCreatePayment_DailyLimitExceeded(t *testing.T) {
 		RecipientAccountNumber: "12345678",
 		Amount:                 200,
 		PayerAccountNumber:     "87654321",
-		CurrencyCode:           model.RSD,
 	}
 
 	payment, err := svc.CreatePayment(context.Background(), req)
@@ -251,6 +254,7 @@ func TestCreatePayment_DailyLimitExceeded(t *testing.T) {
 func TestCreatePayment_MonthlyLimitExceeded(t *testing.T) {
 	payerAccount := &model.Account{
 		AccountNumber:    "87654321",
+		ClientID:         1,
 		Balance:          500000,
 		AvailableBalance: 500000,
 		DailyLimit:       1000000,
@@ -261,6 +265,7 @@ func TestCreatePayment_MonthlyLimitExceeded(t *testing.T) {
 	}
 	recipientAccount := &model.Account{
 		AccountNumber: "12345678",
+		ClientID:      2,
 		Currency:      model.Currency{Code: model.RSD},
 	}
 
@@ -276,7 +281,6 @@ func TestCreatePayment_MonthlyLimitExceeded(t *testing.T) {
 		RecipientAccountNumber: "12345678",
 		Amount:                 200,
 		PayerAccountNumber:     "87654321",
-		CurrencyCode:           model.RSD,
 	}
 
 	payment, err := svc.CreatePayment(context.Background(), req)
@@ -288,6 +292,7 @@ func TestCreatePayment_MonthlyLimitExceeded(t *testing.T) {
 func TestCreatePayment_RecipientNotFound(t *testing.T) {
 	payerAccount := &model.Account{
 		AccountNumber:    "87654321",
+		ClientID:         1,
 		Balance:          10000,
 		AvailableBalance: 10000,
 		DailyLimit:       250000,
@@ -307,7 +312,6 @@ func TestCreatePayment_RecipientNotFound(t *testing.T) {
 		RecipientAccountNumber: "99999999",
 		Amount:                 100,
 		PayerAccountNumber:     "87654321",
-		CurrencyCode:           model.RSD,
 	}
 
 	payment, err := svc.CreatePayment(context.Background(), req)
@@ -318,6 +322,7 @@ func TestCreatePayment_RecipientNotFound(t *testing.T) {
 func TestCreatePayment_TransactionRepoError(t *testing.T) {
 	payerAccount := &model.Account{
 		AccountNumber:    "87654321",
+		ClientID:         1,
 		Balance:          10000,
 		AvailableBalance: 10000,
 		DailyLimit:       250000,
@@ -326,6 +331,7 @@ func TestCreatePayment_TransactionRepoError(t *testing.T) {
 	}
 	recipientAccount := &model.Account{
 		AccountNumber: "12345678",
+		ClientID:      2,
 		Currency:      model.Currency{Code: model.RSD},
 	}
 
@@ -341,7 +347,6 @@ func TestCreatePayment_TransactionRepoError(t *testing.T) {
 		RecipientAccountNumber: "12345678",
 		Amount:                 100,
 		PayerAccountNumber:     "87654321",
-		CurrencyCode:           model.RSD,
 	}
 
 	payment, err := svc.CreatePayment(context.Background(), req)
