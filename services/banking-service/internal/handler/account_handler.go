@@ -18,6 +18,19 @@ func NewAccountHandler(service *service.AccountService) *AccountHandler {
 	return &AccountHandler{service: service}
 }
 
+// Create godoc
+// @Summary Create a new bank account
+// @Description Creates a new bank account for a client. Account kind must be "Current" or "Foreign". Current accounts require a subtype; foreign accounts require a currency code.
+// @Tags accounts
+// @Accept json
+// @Produce json
+// @Param account body dto.CreateAccountRequest true "Account creation data"
+// @Success 201 {object} dto.AccountResponse
+// @Failure 400 {object} errors.AppError
+// @Failure 404 {object} errors.AppError
+// @Failure 409 {object} errors.AppError
+// @Security BearerAuth
+// @Router /api/accounts [post]
 func (h *AccountHandler) Create(c *gin.Context) {
 	var req dto.CreateAccountRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -34,6 +47,16 @@ func (h *AccountHandler) Create(c *gin.Context) {
 	c.JSON(http.StatusCreated, dto.ToAccountResponse(account))
 }
 
+// GetClientAccounts godoc
+// @Summary List client accounts
+// @Description Returns all active accounts belonging to the authenticated client
+// @Tags accounts
+// @Produce json
+// @Success 200 {array} dto.AccountSummaryResponse
+// @Failure 400 {object} errors.AppError
+// @Failure 401 {object} errors.AppError
+// @Security BearerAuth
+// @Router /api/accounts [get]
 func (h *AccountHandler) GetClientAccounts(c *gin.Context) {
 	authCtx := auth.GetAuth(c)
 	if authCtx == nil || authCtx.ClientID == nil {
@@ -54,6 +77,18 @@ func (h *AccountHandler) GetClientAccounts(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// GetAccountDetails godoc
+// @Summary Get account details
+// @Description Returns full details for a specific account owned by the authenticated client
+// @Tags accounts
+// @Produce json
+// @Param accountNumber path string true "Account number"
+// @Success 200 {object} dto.AccountResponse
+// @Failure 400 {object} errors.AppError
+// @Failure 403 {object} errors.AppError
+// @Failure 404 {object} errors.AppError
+// @Security BearerAuth
+// @Router /api/accounts/{accountNumber} [get]
 func (h *AccountHandler) GetAccountDetails(c *gin.Context) {
 	authCtx := auth.GetAuth(c)
 	if authCtx == nil || authCtx.ClientID == nil {
@@ -71,6 +106,20 @@ func (h *AccountHandler) GetAccountDetails(c *gin.Context) {
 	c.JSON(http.StatusOK, dto.ToAccountResponse(account))
 }
 
+// UpdateAccountName godoc
+// @Summary Update account name
+// @Description Updates the display name of an account owned by the authenticated client
+// @Tags accounts
+// @Accept json
+// @Produce json
+// @Param accountNumber path string true "Account number"
+// @Param request body dto.UpdateAccountNameRequest true "New account name"
+// @Success 200
+// @Failure 400 {object} errors.AppError
+// @Failure 403 {object} errors.AppError
+// @Failure 404 {object} errors.AppError
+// @Security BearerAuth
+// @Router /api/accounts/{accountNumber}/name [put]
 func (h *AccountHandler) UpdateAccountName(c *gin.Context) {
 	authCtx := auth.GetAuth(c)
 	if authCtx == nil || authCtx.ClientID == nil {
@@ -94,6 +143,20 @@ func (h *AccountHandler) UpdateAccountName(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
+// RequestLimitsChange godoc
+// @Summary Request account limit change
+// @Description Initiates a limit change request for an account. Sends a verification code for confirmation via mobile app, temporarily returned in body as code.
+// @Tags accounts
+// @Accept json
+// @Produce json
+// @Param accountNumber path string true "Account number"
+// @Param request body dto.RequestLimitsChangeRequest true "New daily and monthly limits"
+// @Success 200 {object} dto.RequestLimitsChangeResponse
+// @Failure 400 {object} errors.AppError
+// @Failure 403 {object} errors.AppError
+// @Failure 404 {object} errors.AppError
+// @Security BearerAuth
+// @Router /api/accounts/{accountNumber}/limits/request [post]
 func (h *AccountHandler) RequestLimitsChange(c *gin.Context) {
 	authCtx := auth.GetAuth(c)
 	if authCtx == nil || authCtx.ClientID == nil {
@@ -115,9 +178,23 @@ func (h *AccountHandler) RequestLimitsChange(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"code": code}) //only for testing purposes, in a real app it would be sent to mobile app
+	c.JSON(http.StatusOK, dto.RequestLimitsChangeResponse{Code: code}) //only for testing purposes, in a real app it would be sent to mobile app
 }
 
+// ConfirmLimitsChange godoc
+// @Summary Confirm account limit change
+// @Description Confirms a pending limit change request using the verification code from the mobile app
+// @Tags accounts
+// @Accept json
+// @Produce json
+// @Param accountNumber path string true "Account number"
+// @Param request body dto.ConfirmLimitsChangeRequest true "Verification code, you can use 1234 for testing but still needs request to be made first"
+// @Success 200
+// @Failure 400 {object} errors.AppError
+// @Failure 403 {object} errors.AppError
+// @Failure 404 {object} errors.AppError
+// @Security BearerAuth
+// @Router /api/accounts/{accountNumber}/limits [put]
 func (h *AccountHandler) ConfirmLimitsChange(c *gin.Context) {
 	authCtx := auth.GetAuth(c)
 	if authCtx == nil || authCtx.ClientID == nil {

@@ -14,9 +14,12 @@ import (
 // ── Fake Repo ────────────────────────────────────────────────────────
 
 type fakePaymentRepo struct {
-	createErr error
-	getErr    error
-	payment   *model.Payment
+	createErr  error
+	getErr     error
+	payment    *model.Payment
+	payments   []model.Payment
+	findAccErr error
+	total      int64
 }
 
 func (f *fakePaymentRepo) Create(ctx context.Context, p *model.Payment) error {
@@ -57,7 +60,7 @@ func (f *fakeTransactionRepo) Create(ctx context.Context, t *model.Transaction) 
 }
 
 func (f *fakePaymentRepo) FindByAccount(_ context.Context, _ string, _ *dto.PaymentFilters) ([]model.Payment, int64, error) {
-	return nil, 0, nil
+	return f.payments, f.total, f.findAccErr
 }
 
 // ── Constructor ────────────────────────────────────────────────────────
@@ -103,4 +106,62 @@ func TestCreatePayment_Error(t *testing.T) {
 	require.Nil(t, p)
 	require.Error(t, err)
 	require.Equal(t, "db error", err.Error())
+}
+
+func TestGetAccountPayments(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		repo      *fakePaymentRepo
+		expectErr bool
+		check     func(t *testing.T, payments []model.Payment, total int64)
+	}{
+		{
+			name: "success returns payments",
+			repo: &fakePaymentRepo{
+				payments: []model.Payment{
+					{PaymentID: 1, RecipientName: "Marko Markovic", Transaction: model.Transaction{StartAmount: 5000, StartCurrencyCode: "RSD", Status: model.TransactionCompleted}},
+					{PaymentID: 2, RecipientName: "Ana Jovanovic", Transaction: model.Transaction{StartAmount: 1200, StartCurrencyCode: "RSD", Status: model.TransactionProcessing}},
+				},
+				total: 2,
+			},
+			check: func(t *testing.T, payments []model.Payment, total int64) {
+				require.Len(t, payments, 2)
+				require.Equal(t, int64(2), total)
+				require.Equal(t, "Marko Markovic", payments[0].RecipientName)
+				require.Equal(t, model.TransactionCompleted, payments[0].Transaction.Status)
+				require.Equal(t, model.TransactionProcessing, payments[1].Transaction.Status)
+			},
+		},
+		{
+			name:      "repo error returns internal error",
+			repo:      &fakePaymentRepo{findAccErr: errors.New("db failure")},
+			expectErr: true,
+		},
+		{
+			name: "returns empty list when no payments",
+			repo: &fakePaymentRepo{payments: []model.Payment{}, total: 0},
+			check: func(t *testing.T, payments []model.Payment, total int64) {
+				require.Empty(t, payments)
+				require.Equal(t, int64(0), total)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			svc := newPaymentService(tt.repo, &fakeTransactionRepo{})
+			payments, total, err := svc.GetAccountPayments(context.Background(), "444000112345678911", &dto.PaymentFilters{Page: 1, PageSize: 10})
+			if tt.expectErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			if tt.check != nil {
+				tt.check(t, payments, total)
+			}
+		})
+	}
 }

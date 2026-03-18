@@ -2,6 +2,10 @@ package dto
 
 import "banking-service/internal/model"
 
+type RequestLimitsChangeResponse struct {
+	Code string `json:"code"`
+}
+
 type AccountSummaryResponse struct {
 	AccountNumber    string  `json:"account_number"`
 	Name             string  `json:"name"`

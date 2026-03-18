@@ -64,6 +64,24 @@ func (h *PaymentHandler) VerifyPayment(c *gin.Context) {
 	})
 }
 
+// GetAccountPayments godoc
+// @Summary List account payments
+// @Description Returns a paginated list of payments for an account, filterable by status, date range, and amount. Only the account owner can access this.
+// @Tags payments
+// @Produce json
+// @Param accountNumber path string true "Account number"
+// @Param status query string false "Filter by status (processing, completed, rejected)"
+// @Param start_date query string false "Filter from date (YYYY-MM-DD)"
+// @Param end_date query string false "Filter to date (YYYY-MM-DD)"
+// @Param min_amount query number false "Minimum amount filter"
+// @Param max_amount query number false "Maximum amount filter"
+// @Param page query int false "Page number" minimum(1)
+// @Param page_size query int false "Page size" minimum(1) maximum(100)
+// @Success 200 {object} dto.ListPaymentsResponse
+// @Failure 400 {object} errors.AppError
+// @Failure 403 {object} errors.AppError
+// @Security BearerAuth
+// @Router /api/accounts/{accountNumber}/payments [get]
 func (h *PaymentHandler) GetAccountPayments(c *gin.Context) {
 	authCtx := auth.GetAuth(c)
 	if authCtx == nil || authCtx.ClientID == nil {
