@@ -114,6 +114,7 @@ func SetupRoutes(
 		{
 			payments.GET("", paymentHandler.GetPayments)
 			payments.GET("/:id", paymentHandler.GetPaymentByID)
+			payments.GET("/:id/receipt", paymentHandler.GetReceipt)
 			payments.POST("", paymentHandler.CreatePayment)
 			payments.POST("/:id/verify", paymentHandler.VerifyPayment)
 		}

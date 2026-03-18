@@ -4,9 +4,13 @@ import (
 	"banking-service/internal/dto"
 	"banking-service/internal/model"
 	"banking-service/internal/repository"
+	"bytes"
 	"common/pkg/auth"
 	"common/pkg/errors"
 	"context"
+	"fmt"
+
+	"github.com/go-pdf/fpdf"
 )
 
 type PaymentService struct {
@@ -139,6 +143,74 @@ func (s *PaymentService) GetPaymentByID(ctx context.Context, id uint) (*model.Pa
 	}
 
 	return payment, nil
+}
+
+func (s *PaymentService) GenerateReceipt(ctx context.Context, id uint) ([]byte, error) {
+	payment, err := s.GetPaymentByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	pdf := fpdf.New("P", "mm", "A4", "")
+	pdf.AddPage()
+
+	pdf.SetFont("Arial", "B", 20)
+	pdf.Cell(0, 12, "Potvrda o placanju")
+	pdf.Ln(16)
+
+	pdf.SetFont("Arial", "", 12)
+	pdf.Cell(60, 8, "Broj placanja:")
+	pdf.Cell(0, 8, fmt.Sprintf("%d", payment.PaymentID))
+	pdf.Ln(8)
+
+	pdf.Cell(60, 8, "Datum:")
+	pdf.Cell(0, 8, payment.Transaction.CreatedAt.Format("02.01.2006. 15:04"))
+	pdf.Ln(8)
+
+	pdf.Cell(60, 8, "Status:")
+	pdf.Cell(0, 8, string(payment.Transaction.Status))
+	pdf.Ln(8)
+
+	pdf.Ln(4)
+	pdf.SetFont("Arial", "B", 12)
+	pdf.Cell(0, 8, "Detalji placanja")
+	pdf.Ln(10)
+
+	pdf.SetFont("Arial", "", 12)
+	pdf.Cell(60, 8, "Primalac:")
+	pdf.Cell(0, 8, payment.RecipientName)
+	pdf.Ln(8)
+
+	pdf.Cell(60, 8, "Racun platioca:")
+	pdf.Cell(0, 8, payment.Transaction.PayerAccountNumber)
+	pdf.Ln(8)
+
+	pdf.Cell(60, 8, "Racun primaoca:")
+	pdf.Cell(0, 8, payment.Transaction.RecipientAccountNumber)
+	pdf.Ln(8)
+
+	pdf.Cell(60, 8, "Iznos:")
+	pdf.Cell(0, 8, fmt.Sprintf("%.2f %s", payment.Transaction.StartAmount, payment.Transaction.StartCurrencyCode))
+	pdf.Ln(8)
+
+	pdf.Cell(60, 8, "Svrha placanja:")
+	pdf.Cell(0, 8, payment.Purpose)
+	pdf.Ln(8)
+
+	pdf.Cell(60, 8, "Poziv na broj:")
+	pdf.Cell(0, 8, payment.ReferenceNumber)
+	pdf.Ln(8)
+
+	pdf.Cell(60, 8, "Sifra placanja:")
+	pdf.Cell(0, 8, payment.PaymentCode)
+	pdf.Ln(8)
+
+	var buf bytes.Buffer
+	if err := pdf.Output(&buf); err != nil {
+		return nil, errors.InternalErr(err)
+	}
+
+	return buf.Bytes(), nil
 }
 
 func (s *PaymentService) VerifyPayment(ctx context.Context, id uint, code string) (*model.Payment, error) {

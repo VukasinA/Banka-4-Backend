@@ -6,6 +6,7 @@ import (
 	"banking-service/internal/repository"
 	"banking-service/internal/service"
 	"common/pkg/errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -114,6 +115,23 @@ func (h *PaymentHandler) GetPaymentByID(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, dto.ToPaymentResponse(payment))
+}
+
+func (h *PaymentHandler) GetReceipt(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.Error(errors.BadRequestErr("invalid payment id"))
+		return
+	}
+
+	pdfBytes, err := h.service.GenerateReceipt(c.Request.Context(), uint(id))
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=receipt-%d.pdf", id))
+	c.Data(http.StatusOK, "application/pdf", pdfBytes)
 }
 
 func (h *PaymentHandler) VerifyPayment(c *gin.Context) {
