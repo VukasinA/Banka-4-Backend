@@ -24,8 +24,8 @@ type TransactionProcessor struct {
 	txManager       repository.TransactionManager
 }
 
-func NewTransactionProcessor(accountRepo repository.AccountRepository, transactionRepo repository.TransactionRepository) *TransactionProcessor {
-	return &TransactionProcessor{accountRepo: accountRepo, transactionRepo: transactionRepo}
+func NewTransactionProcessor(accountRepo repository.AccountRepository, transactionRepo repository.TransactionRepository, txManager repository.TransactionManager) *TransactionProcessor {
+	return &TransactionProcessor{accountRepo: accountRepo, transactionRepo: transactionRepo, txManager: txManager}
 }
 
 func (tp *TransactionProcessor) Process(ctx context.Context, transactionID uint) error {
