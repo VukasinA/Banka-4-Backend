@@ -81,14 +81,20 @@ func (r *accountRepository) FindByAccountNumber(ctx context.Context, accountNumb
 	db := db.DBFromContext(ctx, r.db)
 
 	var account model.Account
-	err := db.WithContext(ctx).Preload("Currency").First(&account, accountNumber).Error
+	err := db.WithContext(ctx).
+		Preload("Currency").
+		Where("account_number = ?", accountNumber).
+		First(&account).
+		Error
 
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
 	}
+
 	if err != nil {
 		return nil, err
 	}
+
 	return &account, nil
 }
 
@@ -101,4 +107,19 @@ func (r *accountRepository) UpdateBalance(ctx context.Context, account *model.Ac
 		"daily_spending":    account.DailySpending,
 		"monthly_spending":  account.MonthlySpending,
 	}).Error
+}
+
+func (r *accountRepository) GetByAccountNumber(ctx context.Context, accountNumber string) (*model.Account, error) {
+	var account model.Account
+	result := r.db.WithContext(ctx).Where("account_number = ?", accountNumber).First(&account)
+
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+
+	return &account, result.Error
+}
+
+func (r *accountRepository) Update(ctx context.Context, account *model.Account) error {
+	return r.db.WithContext(ctx).Save(account).Error
 }
