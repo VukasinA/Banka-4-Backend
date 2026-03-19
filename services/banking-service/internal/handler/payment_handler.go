@@ -2,15 +2,12 @@ package handler
 
 import (
 	"banking-service/internal/dto"
-	"banking-service/internal/model"
-	"banking-service/internal/repository"
 	"banking-service/internal/service"
 	"common/pkg/errors"
 	"fmt"
 	"math"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -23,65 +20,6 @@ type PaymentHandler struct {
 func NewPaymentHandler(paymentService *service.PaymentService, accountService *service.AccountService) *PaymentHandler {
 	return &PaymentHandler{service: paymentService, accountService: accountService}
 }
-
-func (h *PaymentHandler) GetPayments(c *gin.Context) {
-	filter := repository.PaymentFilter{}
-
-	if v := c.Query("date_from"); v != "" {
-		t, err := time.Parse(time.RFC3339, v)
-		if err != nil {
-			c.Error(errors.BadRequestErr("invalid date_from format, use RFC3339"))
-			return
-		}
-		filter.DateFrom = &t
-	}
-
-	if v := c.Query("date_to"); v != "" {
-		t, err := time.Parse(time.RFC3339, v)
-		if err != nil {
-			c.Error(errors.BadRequestErr("invalid date_to format, use RFC3339"))
-			return
-		}
-		filter.DateTo = &t
-	}
-
-	if v := c.Query("amount_min"); v != "" {
-		f, err := strconv.ParseFloat(v, 64)
-		if err != nil {
-			c.Error(errors.BadRequestErr("invalid amount_min"))
-			return
-		}
-		filter.AmountMin = &f
-	}
-
-	if v := c.Query("amount_max"); v != "" {
-		f, err := strconv.ParseFloat(v, 64)
-		if err != nil {
-			c.Error(errors.BadRequestErr("invalid amount_max"))
-			return
-		}
-		filter.AmountMax = &f
-	}
-
-	if v := c.Query("status"); v != "" {
-		s := model.TransactionStatus(v)
-		filter.Status = &s
-	}
-
-	payments, err := h.service.GetFilteredPayments(c.Request.Context(), filter)
-	if err != nil {
-		c.Error(err)
-		return
-	}
-
-	response := make([]dto.PaymentResponse, len(payments))
-	for i, p := range payments {
-		response[i] = dto.ToPaymentResponse(&p)
-	}
-
-	c.JSON(http.StatusOK, response)
-}
-
 
 func (h *PaymentHandler) CreatePayment(c *gin.Context) {
 	var req dto.CreatePaymentRequest
@@ -203,6 +141,61 @@ func (h *PaymentHandler) GetAccountPayments(c *gin.Context) {
 	}
 
 	payments, total, err := h.service.GetAccountPayments(c.Request.Context(), accountNumber, &filters)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	data := make([]dto.PaymentSummaryResponse, len(payments))
+	for i, p := range payments {
+		data[i] = dto.PaymentSummaryResponse{
+			ID:               p.PaymentID,
+			RecipientName:    p.RecipientName,
+			RecipientAccount: p.Transaction.RecipientAccountNumber,
+			PayerAccount:     p.Transaction.PayerAccountNumber,
+			Amount:           p.Transaction.StartAmount,
+			Currency:         string(p.Transaction.StartCurrencyCode),
+			Status:           string(p.Transaction.Status),
+			Purpose:          p.Purpose,
+			PaymentCode:      p.PaymentCode,
+			CreatedAt:        p.Transaction.CreatedAt,
+		}
+	}
+
+	totalPages := int(math.Ceil(float64(total) / float64(filters.PageSize)))
+	c.JSON(http.StatusOK, dto.ListPaymentsResponse{
+		Data:       data,
+		Total:      total,
+		Page:       filters.Page,
+		PageSize:   filters.PageSize,
+		TotalPages: totalPages,
+	})
+}
+
+
+func (h *PaymentHandler) GetClientPayments(c *gin.Context) {
+	valStr := c.Param("clientId")
+
+	clientID, err := strconv.ParseUint(valStr, 10, 64)
+
+	if err != nil {
+		c.Error(errors.BadRequestErr("client id must be a number"))
+		return
+	}
+
+	var filters dto.PaymentFilters
+	if err := c.ShouldBindQuery(&filters); err != nil {
+		c.Error(errors.BadRequestErr(err.Error()))
+		return
+	}
+	if filters.Page < 1 {
+		filters.Page = 1
+	}
+	if filters.PageSize < 1 {
+		filters.PageSize = 10
+	}
+
+	payments, total, err := h.service.GetClientPayments(c.Request.Context(), uint(clientID), &filters)
 	if err != nil {
 		c.Error(err)
 		return

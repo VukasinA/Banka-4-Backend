@@ -94,15 +94,26 @@ func SetupRoutes(
 			//TODO employee list all accounts here?
 		}
 
-		clientAccounts := api.Group("/clients/:clientId/accounts")
-		clientAccounts.Use(auth.Middleware(verifier, permissions))
+		client := api.Group("/clients/:clientId")
+		client.Use(auth.Middleware(verifier, permissions))
 		{
-			clientAccounts.GET("", accountHandler.GetClientAccounts)
-			clientAccounts.GET("/:accountNumber", accountHandler.GetAccountDetails)
-			clientAccounts.GET("/:accountNumber/payments", paymentHandler.GetAccountPayments)
-			clientAccounts.PUT("/:accountNumber/name", accountHandler.UpdateAccountName)
-			clientAccounts.POST("/:accountNumber/limits/request", accountHandler.RequestLimitsChange)
-			clientAccounts.PUT("/:accountNumber/limits", accountHandler.ConfirmLimitsChange)
+			clientAccounts := client.Group("/accounts")
+			{
+				clientAccounts.GET("", accountHandler.GetClientAccounts)
+				clientAccounts.GET("/:accountNumber", accountHandler.GetAccountDetails)
+				clientAccounts.GET("/:accountNumber/payments", paymentHandler.GetAccountPayments)
+				clientAccounts.PUT("/:accountNumber/name", accountHandler.UpdateAccountName)
+				clientAccounts.POST("/:accountNumber/limits/request", accountHandler.RequestLimitsChange)
+				clientAccounts.PUT("/:accountNumber/limits", accountHandler.ConfirmLimitsChange)
+			}
+			clientPayments := client.Group("/payments")
+			{
+				clientPayments.GET("", paymentHandler.GetClientPayments)
+				clientPayments.GET("/:id", paymentHandler.GetPaymentByID)
+				clientPayments.GET("/:id/receipt", paymentHandler.GetReceipt)
+				clientPayments.POST("", paymentHandler.CreatePayment)
+				clientPayments.POST("/:id/verify", paymentHandler.VerifyPayment)
+			}
 		}
 
 		companies := api.Group("/companies")
@@ -136,17 +147,8 @@ func SetupRoutes(
 			exchange.GET("/calculate", exchangeHandler.Calculate)
 		}
 
-		payments := api.Group("/payments")
-		payments.Use(auth.Middleware(verifier, permissions))
-		{
-			payments.GET("", paymentHandler.GetPayments)
-			payments.GET("/:id", paymentHandler.GetPaymentByID)
-			payments.GET("/:id/receipt", paymentHandler.GetReceipt)
-			payments.POST("", paymentHandler.CreatePayment)
-			payments.POST("/:id/verify", paymentHandler.VerifyPayment)
-		}
 
-		clientLoans := api.Group("/client/:client_id/loans")
+		clientLoans := api.Group("/clients/:client_id/loans")
 		clientLoans.Use(auth.Middleware(verifier, permissions))
 		{
 			clientLoans.GET("", loanHandler.GetLoans)

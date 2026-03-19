@@ -3,10 +3,10 @@ package dto
 import "banking-service/internal/model"
 
 type PayeeResponse struct {
-	PayeeID       uint   `json:"payeeId"`
-	ClientID      uint   `json:"clientId"`
+	PayeeID       uint   `json:"payee_id"`
+	ClientID      uint   `json:"client_d"`
 	Name          string `json:"name"`
-	AccountNumber string `json:"accountNumber"`
+	AccountNumber string `json:"account_number"`
 }
 
 func ToPayeeResponse(p *model.Payee) PayeeResponse {

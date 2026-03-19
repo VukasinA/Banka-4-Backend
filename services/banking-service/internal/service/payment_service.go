@@ -113,26 +113,7 @@ func (s *PaymentService) CreatePayment(ctx context.Context, req dto.CreatePaymen
 	return payment, nil
 }
 
-func (s *PaymentService) GetFilteredPayments(ctx context.Context, filter repository.PaymentFilter) ([]model.Payment, error) {
-	ac := auth.GetAuthFromContext(ctx)
-	if ac == nil || ac.ClientID == nil {
-		return nil, errors.UnauthorizedErr("not authenticated as client")
-	}
-
-	payments, err := s.paymentRepo.FindAllByClientID(ctx, *ac.ClientID, filter)
-	if err != nil {
-		return nil, errors.InternalErr(err)
-	}
-
-	return payments, nil
-}
-
 func (s *PaymentService) GetPaymentByID(ctx context.Context, id uint) (*model.Payment, error) {
-	ac := auth.GetAuthFromContext(ctx)
-	if ac == nil || ac.ClientID == nil {
-		return nil, errors.UnauthorizedErr("not authenticated as client")
-	}
-
 	payment, err := s.paymentRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, errors.NotFoundErr("payment not found")
@@ -215,6 +196,14 @@ func (s *PaymentService) GenerateReceipt(ctx context.Context, id uint) ([]byte, 
 }
 func (s *PaymentService) GetAccountPayments(ctx context.Context, accountNumber string, filters *dto.PaymentFilters) ([]model.Payment, int64, error) {
 	payments, total, err := s.paymentRepo.FindByAccount(ctx, accountNumber, filters)
+	if err != nil {
+		return nil, 0, errors.InternalErr(err)
+	}
+	return payments, total, nil
+}
+
+func (s *PaymentService) GetClientPayments(ctx context.Context, clientID uint, filters *dto.PaymentFilters) ([]model.Payment, int64, error) {
+	payments, total, err := s.paymentRepo.FindByClient(ctx, clientID, filters)
 	if err != nil {
 		return nil, 0, errors.InternalErr(err)
 	}
