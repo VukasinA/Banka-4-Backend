@@ -126,3 +126,61 @@ func (h *LoanHandler) GetLoanByID(c *gin.Context) {
 
 	c.JSON(http.StatusOK, details)
 }
+
+func (h *LoanHandler) ListLoanRequests(c *gin.Context) {
+	var query dto.ListLoanRequestsQuery
+
+	if err := c.ShouldBindQuery(&query); err != nil {
+		c.Error(errors.BadRequestErr(err.Error()))
+		return
+	}
+
+	if query.Page == 0 {
+		query.Page = 1
+	}
+	if query.PageSize == 0 {
+		query.PageSize = 10
+	}
+
+	requests, total, err := h.loanService.GetLoanRequests(c.Request.Context(), &query)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data":      requests,
+		"total":     total,
+		"page":      query.Page,
+		"page_size": query.PageSize,
+	})
+}
+func (h *LoanHandler) ApproveLoanRequest(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.Error(errors.BadRequestErr("invalid loan request id"))
+		return
+	}
+
+	if err := h.loanService.ApproveLoanRequest(c.Request.Context(), uint(id)); err != nil {
+		c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Loan request approved successfully"})
+}
+
+func (h *LoanHandler) RejectLoanRequest(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.Error(errors.BadRequestErr("invalid loan request id"))
+		return
+	}
+
+	if err := h.loanService.RejectLoanRequest(c.Request.Context(), uint(id)); err != nil {
+		c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Loan request rejected successfully"})
+}

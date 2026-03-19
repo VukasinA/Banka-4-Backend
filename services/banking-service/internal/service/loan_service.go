@@ -95,7 +95,6 @@ func (s *LoanService) GetClientLoans(ctx context.Context, clientID uint, sortByA
 	if err != nil {
 		return nil, errors.InternalErr(err)
 	}
-	
 
 	var response []dto.LoanResponse
 	for _, l := range loans {
@@ -150,4 +149,58 @@ func (s *LoanService) GetLoanDetails(ctx context.Context, clientID uint, loanID 
 		InterestRate:    loan.CalculatedRate,
 		Installments:    installments,
 	}, nil
+}
+func (s *LoanService) GetLoanRequests(ctx context.Context, query *dto.ListLoanRequestsQuery) ([]dto.LoanRequestResponse, int64, error) {
+	requests, total, err := s.loanRepo.FindAll(ctx, query)
+	if err != nil {
+		return nil, 0, errors.InternalErr(err)
+	}
+
+	var response []dto.LoanRequestResponse
+	for _, r := range requests {
+		response = append(response, dto.LoanRequestResponse{
+			ID:                 r.ID,
+			ClientID:           r.ClientID,
+			AccountNumber:      r.AccountNumber,
+			LoanType:           r.LoanType.Name,
+			Amount:             r.Amount,
+			RepaymentPeriod:    r.RepaymentPeriod,
+			MonthlyInstallment: r.MonthlyInstallment,
+			Status:             r.Status,
+		})
+	}
+
+	return response, total, nil
+}
+func (s *LoanService) ApproveLoanRequest(ctx context.Context, id uint) error {
+	request, err := s.loanRepo.FindByID(ctx, id)
+	if err != nil {
+		return errors.InternalErr(err)
+	}
+	if request == nil {
+		return errors.NotFoundErr("loan request not found")
+	}
+	//obradjujemo samo zahteve koji nisu obradjeni
+	if request.Status != model.LoanRequestPending {
+		return errors.BadRequestErr("loan request is not pending")
+	}
+
+	request.Status = model.LoanRequestApproved
+	return s.loanRepo.Update(ctx, request)
+}
+func (s *LoanService) RejectLoanRequest(ctx context.Context, id uint) error {
+	request, err := s.loanRepo.FindByID(ctx, id)
+	if err != nil {
+		return errors.InternalErr(err)
+	}
+	if request == nil {
+		return errors.NotFoundErr("loan request not found")
+	}
+	//obradjujemo samo zahteve koji nisu obradjeni
+	if request.Status != model.LoanRequestPending {
+		return errors.BadRequestErr("loan request is not pending")
+	}
+
+	request.Status = model.LoanRequestRejected
+	return s.loanRepo.Update(ctx, request)
 }

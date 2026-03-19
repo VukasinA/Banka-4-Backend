@@ -38,7 +38,7 @@ func NewServer(
 	r := gin.New()
 
 	InitRouter(r, cfg)
-	SetupRoutes(r, healthHandler, accountHandler, companyHandler, exchangeHandler, paymentHandler,  cardHandler, loanHandler, verifier, permissions)
+	SetupRoutes(r, healthHandler, accountHandler, companyHandler, exchangeHandler, paymentHandler, cardHandler, loanHandler, verifier, permissions)
 
 	server := &http.Server{
 		Addr:    ":" + cfg.Port,
@@ -89,6 +89,7 @@ func SetupRoutes(
 		{
 			accounts.POST("", accountHandler.Create)
 			accounts.GET("/:accountId/cards", auth.RequireIdentityType(auth.IdentityClient, auth.IdentityEmployee), cardHandler.ListCardsByAccount)
+			accounts.GET("", auth.RequireIdentityType(auth.IdentityClient, auth.IdentityEmployee), accountHandler.ListAccounts)
 		}
 
 		companies := api.Group("/companies")
@@ -105,14 +106,14 @@ func SetupRoutes(
 			cards.PUT("/:cardId/block", auth.RequireIdentityType(auth.IdentityClient, auth.IdentityEmployee), cardHandler.BlockCard)
 			cards.PUT("/:cardId/unblock", auth.RequireIdentityType(auth.IdentityEmployee), cardHandler.UnblockCard)
 			cards.PUT("/:cardId/deactivate", auth.RequireIdentityType(auth.IdentityEmployee), cardHandler.DeactivateCard)
-    }
-    
+		}
+
 		exchange := api.Group("/exchange")
 		{
 			exchange.GET("/rates", exchangeHandler.GetRates)
 			exchange.GET("/calculate", exchangeHandler.Calculate)
-    }
-    
+		}
+
 		payments := api.Group("/payments")
 		payments.Use(auth.Middleware(verifier, permissions))
 		{
@@ -126,6 +127,13 @@ func SetupRoutes(
 			clientLoans.GET("", loanHandler.GetLoans)
 			clientLoans.GET("/:loan_id", loanHandler.GetLoanByID)
 			clientLoans.POST("/request", loanHandler.SubmitLoanRequest)
+		}
+		loanRequests := api.Group("/loan-requests")
+		loanRequests.Use(auth.Middleware(verifier, permissions))
+		{
+			loanRequests.GET("", auth.RequireIdentityType(auth.IdentityEmployee), loanHandler.ListLoanRequests)
+			loanRequests.PATCH("/:id/approve", auth.RequireIdentityType(auth.IdentityEmployee), loanHandler.ApproveLoanRequest)
+			loanRequests.PATCH("/:id/reject", auth.RequireIdentityType(auth.IdentityEmployee), loanHandler.RejectLoanRequest)
 		}
 	}
 }

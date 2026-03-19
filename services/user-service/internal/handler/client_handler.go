@@ -54,10 +54,10 @@ func (h *ClientHandler) ListClients(c *gin.Context) {
 		return
 	}
 
-	if req.Page == 0 {
+	if req.Page < 0 {
 		req.Page = 1
 	}
-	if req.PageSize == 0 {
+	if req.PageSize < 0 {
 		req.PageSize = 10
 	}
 

@@ -40,10 +40,10 @@ func (h *AccountHandler) ListAccounts(c *gin.Context) {
 		c.Error(errors.BadRequestErr(err.Error()))
 		return
 	}
-	if req.Page == 0 {
+	if req.Page < 0 {
 		req.Page = 1
 	}
-	if req.PageSize == 0 {
+	if req.PageSize < 0 {
 		req.PageSize = 10
 	}
 	accounts, total, err := h.service.GetAllAccounts(c.Request.Context(), &req)
