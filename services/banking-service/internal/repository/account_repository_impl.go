@@ -102,12 +102,3 @@ func (r *accountRepository) UpdateBalance(ctx context.Context, account *model.Ac
 		"monthly_spending":  account.MonthlySpending,
 	}).Error
 }
-
-func (r *accountRepository) NameExistsForClient(ctx context.Context, clientID uint, name string, excludeNumber string) (bool, error) {
-	var count int64
-	err := r.db.WithContext(ctx).
-		Model(&model.Account{}).
-		Where("client_id = ? AND name = ? AND account_number != ?", clientID, name, excludeNumber).
-		Count(&count).Error
-	return count > 0, err
-}

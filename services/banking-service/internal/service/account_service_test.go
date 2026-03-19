@@ -17,14 +17,11 @@ type fakeAccountRepo struct {
   accountNumberExists bool
   nameExists          bool
   nameExistsErr       error
-  accountNumberExists bool
 	accNumExistsErr     error
 	createErr           error
 	accounts            []model.Account
 	account             *model.Account
 	findErr             error
-	nameExists          bool
-	nameExistsErr       error
 	updateNameErr       error
 	updateLimitsErr     error
 	getByAccNumber      *model.Account
@@ -60,9 +57,15 @@ func (r *fakeAccountRepo) UpdateLimits(_ context.Context, _ string, _ float64, _
 	return r.updateLimitsErr
 }
 
-func (r *fakeAccountRepo) NameExistsForClient(_ context.Context, _ uint, _ string, _ string) (bool, error) {
-	return r.nameExists, r.nameExistsErr
+func (r *fakeAccountRepo) GetByAccountNumber(_ context.Context, _ string) (*model.Account, error) {
+	return r.getByAccNumber, r.getByAccNumberErr
 }
+
+func (f *fakeAccountRepo) UpdateBalance(_ context.Context, _ *model.Account) error {
+	return nil
+}
+
+
 
 type fakeVerificationTokenRepo struct {
 	token     *model.VerificationToken
@@ -81,21 +84,6 @@ func (r *fakeVerificationTokenRepo) FindByAccountAndClient(_ context.Context, _ 
 
 func (r *fakeVerificationTokenRepo) DeleteByAccountAndClient(_ context.Context, _ string, _ uint) error {
 	return r.deleteErr
-}
-
-func (r *fakeAccountRepo) GetByAccountNumber(_ context.Context, _ string) (*model.Account, error) {
-	return r.getByAccNumber, r.getByAccNumberErr
-}
-
-func (f *fakeAccountRepo) UpdateBalance(_ context.Context, _ *model.Account) error {
-	return nil
-}
-
-func (f *fakeAccountRepo) NameExistsForClient(_ context.Context, _ uint, _ string, _ string) (bool, error) {
-	if f.nameExistsErr != nil {
-		return false, f.nameExistsErr
-	}
-	return f.nameExists, nil
 }
 
 type fakeCurrencyRepo struct {

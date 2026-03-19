@@ -142,10 +142,6 @@ func (f *fakePaymentAccountRepo) UpdateBalance(ctx context.Context, account *mod
 	return nil
 }
 
-func (f *fakePaymentAccountRepo) NameExistsForClient(_ context.Context, _ uint, _ string, _ string) (bool, error) {
-	return false, nil
-}
-
 // ── Fake Exchange Service ──────────────────────────────────────────
 
 type fakeExchangeService struct {
