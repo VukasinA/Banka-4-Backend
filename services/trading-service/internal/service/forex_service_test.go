@@ -7,6 +7,7 @@ import (
 
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/client"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/model"
+	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/repository"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -54,7 +55,8 @@ func TestRefreshFromAPI(t *testing.T) {
 	}
 
 	mockClient := &mockExchangeClient{data: mockResp}
-	service := NewForexService(db, mockClient)
+	repo := repository.NewForexRepository(db)
+	service := NewForexService(repo, mockClient)
 
 	if err := service.refreshFromAPI(context.Background()); err != nil {
 		t.Fatalf("refreshFromAPI failed: %v", err)
@@ -93,7 +95,8 @@ func TestInitialize_SeedsDB(t *testing.T) {
 	}
 
 	mockClient := &mockExchangeClient{data: mockResp}
-	service := NewForexService(db, mockClient)
+	repo := repository.NewForexRepository(db)
+	service := NewForexService(repo, mockClient)
 
 	// DB prazna → Initialize seeduje
 	service.Initialize(context.Background())

@@ -7,19 +7,19 @@ import (
 
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/client"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/model"
-	"gorm.io/gorm"
+	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/repository"
 )
 
 const refreshInterval = 1 * time.Hour
 
 type ForexService struct {
-	db     *gorm.DB
+	repo   repository.ForexRepository
 	client client.ExchangeRateClient
 }
 
-func NewForexService(db *gorm.DB, client client.ExchangeRateClient) *ForexService {
+func NewForexService(repo repository.ForexRepository, client client.ExchangeRateClient) *ForexService {
 	return &ForexService{
-		db:     db,
+		repo:   repo,
 		client: client,
 	}
 }
@@ -27,9 +27,8 @@ func NewForexService(db *gorm.DB, client client.ExchangeRateClient) *ForexServic
 func (s *ForexService) Initialize(ctx context.Context) {
 	var count int64
 
-	if err := s.db.WithContext(ctx).
-		Model(&model.ForexPair{}).
-		Count(&count).Error; err != nil {
+	count, err := s.repo.Count(ctx)
+	if err != nil {
 		log.Println("failed counting forex pairs:", err)
 		return
 	}
@@ -80,11 +79,7 @@ func (s *ForexService) refreshFromAPI(ctx context.Context) error {
 			ProviderUpdatedAt:    providerUpdatedAt,
 			ProviderNextUpdateAt: providerNextUpdateAt,
 		}
-
-		if err := s.db.WithContext(ctx).
-			Where("base = ? AND quote = ?", pair.Base, pair.Quote).
-			Assign(pair).
-			FirstOrCreate(&pair).Error; err != nil {
+		if err := s.repo.Upsert(ctx, pair); err != nil {
 			return err
 		}
 	}
