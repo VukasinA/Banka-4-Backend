@@ -6,8 +6,9 @@ import (
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/config"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/model"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/permission"
-	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/seed"
+	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/repository"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/server"
+	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/service"
 	"go.uber.org/fx"
 	"google.golang.org/grpc"
 	"gorm.io/gorm"
@@ -44,6 +45,13 @@ func main() {
 				return permission.NewGrpcPermissionProvider(c)
 			},
 			handler.NewHealthHandler,
+
+			func(cfg *config.Configuration) *client.StockClient {
+				return client.NewStockClient(cfg.FinnhubAPIKey)
+			},
+			repository.NewListingRepository,
+			repository.NewStockRepository,
+			service.NewStockService,
 		),
 		fx.Invoke(func(cfg *config.Configuration) error {
 			return logging.Init(cfg.Env)
@@ -55,8 +63,20 @@ func main() {
 				&model.ListingDailyPriceInfo{},
 			)
 		}),
-		fx.Invoke(func(db *gorm.DB, cfg *config.Configuration) error {
-			return seed.SeedStocks(db, cfg.FinnhubAPIKey, 10)
+		fx.Invoke(func(db *gorm.DB, svc *service.StockService) error {
+			var count int64
+			if err := db.Model(&model.Listing{}).Count(&count).Error; err != nil {
+				return err
+			}
+			if count == 0 {
+				if err := svc.SeedStocks(10); err != nil {
+					return err
+				}
+				go svc.StartRefreshLoopNoInitial()
+			} else {
+				go svc.StartRefreshLoop()
+			}
+			return nil
 		}),
 		fx.Invoke(server.NewServer),
 	).Run()
