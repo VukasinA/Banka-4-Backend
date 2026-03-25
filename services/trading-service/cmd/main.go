@@ -1,13 +1,17 @@
 package main
 
 import (
+	"context"
+
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/handler"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/client"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/config"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/model"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/permission"
+	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/repository"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/seed"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/server"
+	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/service"
 
 	"go.uber.org/fx"
 	"google.golang.org/grpc"
@@ -45,19 +49,40 @@ func main() {
 				return permission.NewGrpcPermissionProvider(c)
 			},
 			handler.NewHealthHandler,
+
+			func(cfg *config.Configuration) *client.StockClient {
+				return client.NewStockClient(cfg.FinnhubAPIKey)
+			},
+			repository.NewListingRepository,
+			repository.NewStockRepository,
+			service.NewStockService,
+			repository.NewExchangeRepository,
+			service.NewExchangeService,
+			handler.NewExchangeHandler,
 		),
 		fx.Invoke(func(cfg *config.Configuration) error {
 			return logging.Init(cfg.Env)
 		}),
 		fx.Invoke(func(db *gorm.DB) error {
-			if err := db.AutoMigrate(
+			return db.AutoMigrate(
 				&model.Listing{},
+				&model.Stock{},
 				&model.ListingDailyPriceInfo{},
+				&model.Exchange{},
 				&model.FuturesContract{},
-			); err != nil {
-				return err
-			}
-			return seed.Run(db)
+			)
+		}),
+		fx.Invoke(func(svc *service.StockService) {
+			go func() {
+				svc.Initialize(context.Background())
+				svc.StartBackgroundRefresh()
+			}()
+		}),
+		fx.Invoke(func(db *gorm.DB) error {
+			return seed.SeedFuturesContracts(db)
+		}),
+		fx.Invoke(func(db *gorm.DB) error {
+			return seed.RunExchangeSeed(db)
 		}),
 		fx.Invoke(server.NewServer),
 	).Run()

@@ -72,7 +72,7 @@ var futuresContracts = []model.FuturesContract{
 	{Ticker: "PBOZ26", Name: "Pork Belly Options Futures", ContractSize: 40000, ContractUnit: "pound", SettlementDate: time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC)},
 }
 
-func seedFuturesContracts(db *gorm.DB) error {
+func SeedFuturesContracts(db *gorm.DB) error {
 	for _, fc := range futuresContracts {
 		var existing model.FuturesContract
 		err := db.Where("ticker = ?", fc.Ticker).First(&existing).Error
@@ -86,13 +86,6 @@ func seedFuturesContracts(db *gorm.DB) error {
 		if err := db.Create(&fc).Error; err != nil {
 			return err
 		}
-	}
-	return nil
-}
-
-func Run(db *gorm.DB) error {
-	if err := seedFuturesContracts(db); err != nil {
-		return err
 	}
 	return nil
 }
