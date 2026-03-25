@@ -23,7 +23,7 @@ type LoanType struct {
 type LoanRequest struct {
 	ID                 uint    `gorm:"primaryKey"`
 	ClientID           uint    `gorm:"not null"`
-	AccountNumber      string  `gorm:"size:18"`
+	AccountNumber      string  `gorm:"size:18;not null"`
 	LoanTypeID         uint    `gorm:"not null"`
 	Amount             float64 `gorm:"not null"`
 	RepaymentPeriod    int     `gorm:"not null"`

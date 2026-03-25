@@ -38,7 +38,7 @@ type Card struct {
 	CardType           CardType   `gorm:"not null;size:20"`
 	CardBrand          CardBrand  `gorm:"not null;size:20"`
 	Name               string     `gorm:"not null;size:50"`
-	AccountNumber      string     `gorm:"size:18"`
+	AccountNumber      string     `gorm:"not null;index;size:18"`
 	CVV                string     `gorm:"not null;size:3"`
 	Limit              float64    `gorm:"not null;default:0"`
 	Status             CardStatus `gorm:"not null;size:20;default:'Active'"`
