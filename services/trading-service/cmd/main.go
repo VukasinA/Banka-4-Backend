@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/handler"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/client"
@@ -68,16 +67,14 @@ func main() {
 		fx.Invoke(func(cfg *config.Configuration) error {
 			return logging.Init(cfg.Env)
 		}),
-		fx.Invoke(func(db *gorm.DB) {
-			if err := db.AutoMigrate(
+		fx.Invoke(func(db *gorm.DB) error {
+			return db.AutoMigrate(
 				&model.Listing{},
 				&model.Stock{},
 				&model.ListingDailyPriceInfo{},
 				&model.Exchange{},
 				&model.ForexPair{},
-			); err != nil {
-				log.Fatalf("AutoMigrate failed: %v", err)
-			}
+			)
 		}),
 		fx.Invoke(func(svc *service.StockService) {
 			go func() {
