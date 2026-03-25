@@ -68,6 +68,7 @@ func main() {
 				&model.Stock{},
 				&model.ListingDailyPriceInfo{},
 				&model.Exchange{},
+				&model.Order{},
 			)
 		}),
 		fx.Invoke(func(svc *service.StockService) {
