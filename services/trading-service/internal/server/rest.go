@@ -21,12 +21,12 @@ import (
 	_ "github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/docs"
 )
 
-func NewServer(lc fx.Lifecycle, cfg *config.Configuration, healthHandler *handler.HealthHandler, exchangeHandler *handler.ExchangeHandler) {
+func NewServer(lc fx.Lifecycle, cfg *config.Configuration, healthHandler *handler.HealthHandler, exchangeHandler *handler.ExchangeHandler, listingHandler *handler.ListingHandler) {
 	r := gin.New()
 
 	InitRouter(r, cfg)
 
-	SetupRoutes(r, healthHandler, exchangeHandler)
+	SetupRoutes(r, healthHandler, exchangeHandler, listingHandler)
 
 	server := &http.Server{
 		Addr:    ":" + cfg.Port,
@@ -54,7 +54,7 @@ func InitRouter(r *gin.Engine, cfg *config.Configuration) {
 	validator.RegisterValidators()
 }
 
-func SetupRoutes(r *gin.Engine, healthHandler *handler.HealthHandler, exchangeHandler *handler.ExchangeHandler) {
+func SetupRoutes(r *gin.Engine, healthHandler *handler.HealthHandler, exchangeHandler *handler.ExchangeHandler, listingHandler *handler.ListingHandler) {
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	api := r.Group("/api")
@@ -65,6 +65,12 @@ func SetupRoutes(r *gin.Engine, healthHandler *handler.HealthHandler, exchangeHa
 		{
 			exchanges.GET("", exchangeHandler.GetAll)
 			exchanges.PATCH("/:micCode/toggle", exchangeHandler.ToggleTradingEnabled)
+		}
+		listings := api.Group("/listings")
+		{
+			listings.GET("/stocks", listingHandler.GetStocks)
+			listings.GET("/futures", listingHandler.GetFutures)
+			listings.GET("/forex", listingHandler.GetForex)
 		}
 	}
 }

@@ -46,3 +46,110 @@ func (r *listingRepository) Count(ctx context.Context) (int64, error) {
 	}
 	return count, nil
 }
+
+func applyListingFilters(q *gorm.DB, filter ListingFilter) *gorm.DB {
+	if filter.Search != "" {
+		like := "%" + filter.Search + "%"
+		q = q.Where("listings.ticker LIKE ? OR listings.name LIKE ?", like, like)
+	}
+	if filter.Exchange != "" {
+		q = q.Where("listings.exchange_mic LIKE ?", filter.Exchange+"%")
+	}
+	if filter.PriceMin > 0 {
+		q = q.Where("listings.price >= ?", filter.PriceMin)
+	}
+	if filter.PriceMax > 0 {
+		q = q.Where("listings.price <= ?", filter.PriceMax)
+	}
+	if filter.AskMin > 0 {
+		q = q.Where("listings.ask >= ?", filter.AskMin)
+	}
+	if filter.AskMax > 0 {
+		q = q.Where("listings.ask <= ?", filter.AskMax)
+	}
+	if filter.BidMin > 0 {
+		q = q.Where("listings.bid >= ?", filter.BidMin)
+	}
+	if filter.BidMax > 0 {
+		q = q.Where("listings.bid <= ?", filter.BidMax)
+	}
+	if filter.VolumeMin > 0 {
+		q = q.Where("listings.volume >= ?", filter.VolumeMin)
+	}
+	if filter.VolumeMax > 0 {
+		q = q.Where("listings.volume <= ?", filter.VolumeMax)
+	}
+	return q
+}
+
+func sortColumn(filter ListingFilter) string {
+	col := "listings.price"
+	switch filter.SortBy {
+	case "volume":
+		col = "listings.volume"
+	case "maintenance_margin":
+		col = "listings.maintenance_margin"
+	}
+	dir := "ASC"
+	if filter.SortDir == "desc" {
+		dir = "DESC"
+	}
+	return col + " " + dir
+}
+
+func (r *listingRepository) FindStocks(ctx context.Context, filter ListingFilter) ([]model.Listing, int64, error) {
+	var listings []model.Listing
+	var count int64
+
+	db := r.db.WithContext(ctx).
+		Model(&model.Listing{}).
+		Joins("INNER JOIN stocks ON stocks.listing_id = listings.listing_id")
+
+	db = applyListingFilters(db, filter)
+
+	if err := db.Count(&count).Error; err != nil {
+		return nil, 0, err
+	}
+
+	err := db.
+		Preload("Stock").
+		Preload("DailyPriceInfos", func(db *gorm.DB) *gorm.DB {
+			return db.Order("date DESC").Limit(1)
+		}).
+		Order(sortColumn(filter)).
+		Limit(filter.PageSize).
+		Offset((filter.Page - 1) * filter.PageSize).
+		Find(&listings).Error
+
+	return listings, count, err
+}
+
+func (r *listingRepository) FindFutures(ctx context.Context, filter ListingFilter) ([]model.Listing, int64, error) {
+	var listings []model.Listing
+	var count int64
+
+	db := r.db.WithContext(ctx).
+		Model(&model.Listing{}).
+		Joins("INNER JOIN futures_contracts ON futures_contracts.ticker = listings.ticker")
+
+	db = applyListingFilters(db, filter)
+
+	if filter.SettlementDate != nil {
+		db = db.Where("futures_contracts.settlement_date::date = ?", filter.SettlementDate.Format("2006-01-02"))
+	}
+
+	if err := db.Count(&count).Error; err != nil {
+		return nil, 0, err
+	}
+
+	err := db.
+		Preload("DailyPriceInfos", func(db *gorm.DB) *gorm.DB {
+			return db.Order("date DESC").Limit(1)
+		}).
+		Order(sortColumn(filter)).
+		Limit(filter.PageSize).
+		Offset((filter.Page - 1) * filter.PageSize).
+		Find(&listings).Error
+
+	return listings, count, err
+}
