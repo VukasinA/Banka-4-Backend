@@ -26,7 +26,6 @@ const (
 
 type Order struct {
 	OrderID       uint           `gorm:"primaryKey;autoIncrement"`
-	AccountID     uint           `gorm:"not null;index"`
 	ListingID     uint           `gorm:"not null;index"`
 	Listing       Listing
 	OrderType     OrderType      `gorm:"not null;size:20"`
