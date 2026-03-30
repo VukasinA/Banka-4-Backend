@@ -21,7 +21,7 @@ func NewPortfolioHandler(service *service.PortfolioService) *PortfolioHandler {
 
 // GetClientPortfolio godoc
 // @Summary Get portfolio for a client
-// @Description Returns all currently held asset positions for a client, aggregated from all orders. Only approved orders with fills are counted. Forex is excluded (no possession).
+// @Description Returns all currently held asset positions for a client, aggregated from all orders. Only approved orders with fills are counted. Includes stocks, futures, options, and forex pairs.
 // @Tags portfolio
 // @Security BearerAuth
 // @Produce json
@@ -50,7 +50,7 @@ func (h *PortfolioHandler) GetClientPortfolio(c *gin.Context) {
 
 // GetActuaryPortfolio godoc
 // @Summary Get portfolio for an actuary/agent
-// @Description Returns all currently held asset positions for an actuary (employee agent/supervisor), aggregated from all orders. Only approved orders with fills are counted. Forex is excluded.
+// @Description Returns all currently held asset positions for an actuary (employee agent/supervisor), aggregated from all orders. Only approved orders with fills are counted. Includes stocks, futures, options, and forex pairs.
 // @Tags portfolio
 // @Security BearerAuth
 // @Produce json

@@ -8,6 +8,7 @@ const (
 	AssetTypeStock   AssetType = "STOCK"
 	AssetTypeFutures AssetType = "FUTURES"
 	AssetTypeOption  AssetType = "OPTION"
+	AssetTypeForex   AssetType = "FOREX"
 )
 
 type PortfolioAssetResponse struct {

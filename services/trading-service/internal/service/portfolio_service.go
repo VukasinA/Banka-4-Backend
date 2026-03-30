@@ -15,6 +15,7 @@ type PortfolioService struct {
 	stockRepo     repository.StockRepository
 	optionRepo    repository.OptionRepository
 	futuresRepo   repository.FuturesContractRepository
+	forexRepo     repository.ForexRepository
 }
 
 func NewPortfolioService(
@@ -22,12 +23,14 @@ func NewPortfolioService(
 	stockRepo repository.StockRepository,
 	optionRepo repository.OptionRepository,
 	futuresRepo repository.FuturesContractRepository,
+	forexRepo repository.ForexRepository,
 ) *PortfolioService {
 	return &PortfolioService{
 		ownershipRepo: ownershipRepo,
 		stockRepo:     stockRepo,
 		optionRepo:    optionRepo,
 		futuresRepo:   futuresRepo,
+		forexRepo:     forexRepo,
 	}
 }
 
@@ -130,6 +133,14 @@ func (s *PortfolioService) GetPortfolio(ctx context.Context, identityID uint, ow
 	}
 	for _, fc := range futures {
 		meta[fc.ListingID] = assetMeta{assetType: dto.AssetTypeFutures}
+	}
+
+	forexPairs, err := s.forexRepo.FindByListingIDs(listingIDs)
+	if err != nil {
+		return nil, pkgerrors.InternalErr(err)
+	}
+	for _, fp := range forexPairs {
+		meta[fp.ListingID] = assetMeta{assetType: dto.AssetTypeForex}
 	}
 
 	var result []dto.PortfolioAssetResponse
