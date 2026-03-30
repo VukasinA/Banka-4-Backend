@@ -19,6 +19,48 @@ func NewOrderHandler(service *service.OrderService) *OrderHandler {
 	return &OrderHandler{service: service}
 }
 
+// GetOrders godoc
+// @Summary Get all orders
+// @Description Returns a paginated and filtered list of orders. Clients see only their own orders, employees see all.
+// @Tags orders
+// @Produce json
+// @Param page query int false "Page number"
+// @Param page_size query int false "Page size"
+// @Param status query string false "Filter by status (PENDING, APPROVED, DECLINED)"
+// @Param direction query string false "Filter by direction (BUY, SELL)"
+// @Param is_done query bool false "Filter by completion status"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Router /api/orders [get]
+func (h *OrderHandler) GetOrders(c *gin.Context) {
+	var query dto.ListOrdersQuery
+	if err := c.ShouldBindQuery(&query); err != nil {
+		c.Error(errors.BadRequestErr(err.Error()))
+		return
+	}
+
+	if query.Page <= 0 {
+		query.Page = 1
+	}
+	if query.PageSize <= 0 {
+		query.PageSize = 10
+	}
+
+	orders, total, err := h.service.GetOrders(c.Request.Context(), query)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data":      dto.ToOrderResponseList(orders),
+		"total":     total,
+		"page":      query.Page,
+		"page_size": query.PageSize,
+	})
+}
+
 // CreateOrder godoc
 // @Summary Create a new order
 // @Description Creates a buy or sell order for a listing
@@ -27,8 +69,8 @@ func NewOrderHandler(service *service.OrderService) *OrderHandler {
 // @Produce json
 // @Param request body dto.CreateOrderRequest true "Order details"
 // @Success 201 {object} dto.OrderResponse
-// @Failure 400 {object} errors.AppError
-// @Failure 401 {object} errors.AppError
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
 // @Router /api/orders [post]
 func (h *OrderHandler) CreateOrder(c *gin.Context) {
 	var req dto.CreateOrderRequest
@@ -53,8 +95,8 @@ func (h *OrderHandler) CreateOrder(c *gin.Context) {
 // @Produce json
 // @Param id path int true "Order ID"
 // @Success 200 {object} dto.OrderResponse
-// @Failure 400 {object} errors.AppError
-// @Failure 404 {object} errors.AppError
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
 // @Router /api/orders/{id}/approve [patch]
 func (h *OrderHandler) ApproveOrder(c *gin.Context) {
 	orderID, err := parseOrderID(c)
@@ -79,8 +121,8 @@ func (h *OrderHandler) ApproveOrder(c *gin.Context) {
 // @Produce json
 // @Param id path int true "Order ID"
 // @Success 200 {object} dto.OrderResponse
-// @Failure 400 {object} errors.AppError
-// @Failure 404 {object} errors.AppError
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
 // @Router /api/orders/{id}/decline [patch]
 func (h *OrderHandler) DeclineOrder(c *gin.Context) {
 	orderID, err := parseOrderID(c)
@@ -105,8 +147,8 @@ func (h *OrderHandler) DeclineOrder(c *gin.Context) {
 // @Produce json
 // @Param id path int true "Order ID"
 // @Success 200 {object} dto.OrderResponse
-// @Failure 400 {object} errors.AppError
-// @Failure 404 {object} errors.AppError
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
 // @Router /api/orders/{id}/cancel [patch]
 func (h *OrderHandler) CancelOrder(c *gin.Context) {
 	orderID, err := parseOrderID(c)
