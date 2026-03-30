@@ -40,6 +40,15 @@ func NewOrderService(
 	}
 }
 
+func (s *OrderService) GetOrders(ctx context.Context, query dto.ListOrdersQuery) ([]model.Order, int64, error) {
+	orders, total, err := s.orderRepo.FindAll(ctx, query.Page, query.PageSize, nil, query.Status, query.Direction, query.IsDone)
+	if err != nil {
+		return nil, 0, errors.InternalErr(err)
+	}
+
+	return orders, total, nil
+}
+
 func (s *OrderService) CreateOrder(ctx context.Context, req dto.CreateOrderRequest) (*model.Order, error) {
 	if err := validateOrderTypeFields(req); err != nil {
 		return nil, err
