@@ -3,14 +3,14 @@ package dto
 import "github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/model"
 
 type OrderSummaryResponse struct {
-	OrderID           uint                 `json:"orderId"`
-	UserID            uint                 `json:"userId"`
-	ListingName       string               `json:"listingName"`
+	OrderID           uint                 `json:"order_id"`
+	UserID            uint                 `json:"user_id"`
+	ListingName       string               `json:"listing_name"`
 	Quantity          uint                 `json:"quantity"`
-	ContractSize      float64              `json:"contractSize"`
-	PricePerUnit      *float64             `json:"pricePerUnit"`
+	ContractSize      float64              `json:"contract_size"`
+	PricePerUnit      *float64             `json:"price_per_unit"`
 	Direction         model.OrderDirection `json:"direction"`
-	RemainingPortions uint                 `json:"remainingPortions"`
+	RemainingPortions uint                 `json:"remaining_portions"`
 	Status            model.OrderStatus    `json:"status"`
 }
 
