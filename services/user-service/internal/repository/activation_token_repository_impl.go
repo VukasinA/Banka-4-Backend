@@ -43,3 +43,8 @@ func (r *activationTokenRepository) Delete(ctx context.Context, token *model.Act
 	db := db.DBFromContext(ctx, r.db)
 	return db.WithContext(ctx).Delete(token).Error
 }
+
+func (r *activationTokenRepository) DeleteByIdentityID(ctx context.Context, identityID uint) error {
+	db := db.DBFromContext(ctx, r.db)
+	return db.WithContext(ctx).Where("identity_id = ?", identityID).Delete(&model.ActivationToken{}).Error
+}

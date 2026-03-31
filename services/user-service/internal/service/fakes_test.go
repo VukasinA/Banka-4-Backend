@@ -153,6 +153,10 @@ func (f *fakeActivationTokenRepo) Delete(_ context.Context, _ *model.ActivationT
 	return f.deleteErr
 }
 
+func (f *fakeActivationTokenRepo) DeleteByIdentityID(_ context.Context, _ uint) error {
+	return f.deleteErr
+}
+
 type fakeResetTokenRepo struct {
 	token     *model.ResetToken
 	findErr   error
