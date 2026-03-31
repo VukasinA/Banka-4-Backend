@@ -71,8 +71,36 @@ func (s *AuthService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.Lo
 		return nil, errors.ForbiddenErr("account is disabled")
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(identity.PasswordHash), []byte(req.Password)); err != nil {
+	if time.Since(identity.LastFailedLoginTime) > time.Duration(s.cfg.FailedLoginWindow)*time.Minute {
+	  identity.FailedLoginCount = 0
+		
+		if err = s.identityRepo.Update(ctx, identity); err != nil {
+			return nil, errors.InternalErr(err)
+		}
+	}
+
+	if(int(identity.FailedLoginCount) >= s.cfg.MaxFailedLogins) {
+		return nil, errors.UnauthorizedErr("account is temporarily blocked")
+	}
+
+	err = bcrypt.CompareHashAndPassword([]byte(identity.PasswordHash), []byte(req.Password)) 
+
+	if(err != nil) {
+		identity.FailedLoginCount++
+		identity.LastFailedLoginTime = time.Now()
+
+		if err = s.identityRepo.Update(ctx, identity); err != nil {
+			return nil, errors.InternalErr(err)
+		}
+
 		return nil, errors.UnauthorizedErr("invalid credentials")
+	}
+
+	identity.FailedLoginCount = 0
+	identity.LastFailedLoginTime = time.Time{}
+	
+	if err = s.identityRepo.Update(ctx, identity); err != nil {
+		return nil, errors.InternalErr(err)
 	}
 
 	session, err := s.buildSession(ctx, identity)

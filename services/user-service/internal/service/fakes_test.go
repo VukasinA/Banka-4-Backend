@@ -220,9 +220,11 @@ func (m *fakeTxManager) WithinTransaction(ctx context.Context, fn func(ctx conte
 
 func testConfig() *config.Configuration {
 	return &config.Configuration{
-		JWTSecret:     "test-secret",
-		JWTExpiry:     15,
-		RefreshExpiry: 10080,
+		JWTSecret:         "test-secret",
+		JWTExpiry:         15,
+		RefreshExpiry:     10080,
+		FailedLoginWindow: 5,
+		MaxFailedLogins:   4,
 		URLs: config.URLConfig{
 			FrontendBaseURL: "http://localhost:5173",
 		},
