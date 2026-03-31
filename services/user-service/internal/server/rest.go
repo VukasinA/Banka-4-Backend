@@ -83,6 +83,7 @@ func SetupRoutes(
 		{
 			authGroup.POST("/login", authHandler.Login)
 			authGroup.POST("/activate", authHandler.Activate)
+			authGroup.POST("/resend-activation", authHandler.ResendActivation)
 			authGroup.POST("/forgot-password", authHandler.ForgotPassword)
 			authGroup.POST("/reset-password", authHandler.ResetPassword)
 			authGroup.POST("/refresh", authHandler.RefreshToken)

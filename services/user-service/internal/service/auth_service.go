@@ -73,10 +73,6 @@ func (s *AuthService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.Lo
 
 	if time.Since(identity.LastFailedLoginTime) > time.Duration(s.cfg.FailedLoginWindow)*time.Minute {
 	  identity.FailedLoginCount = 0
-		
-		if err = s.identityRepo.Update(ctx, identity); err != nil {
-			return nil, errors.InternalErr(err)
-		}
 	}
 
 	if(int(identity.FailedLoginCount) >= s.cfg.MaxFailedLogins) {
@@ -261,6 +257,59 @@ func (s *AuthService) ActivateAccount(ctx context.Context, tokenStr, password st
 	if err := s.emailService.Send(identity.Email, "Account activated", "Vas nalog je uspesno aktiviran."); err != nil {
 		log.Printf("failed to send account activation confirmation email to identity_id=%d: %v", identity.ID, err)
 	}
+	return nil
+}
+
+func (s *AuthService) ResendActivation(ctx context.Context, email string) error {
+	identity, err := s.identityRepo.FindByEmail(ctx, email)
+	if err != nil {
+		return errors.InternalErr(err)
+	}
+
+	if identity == nil {
+		return nil
+	}
+
+	if identity.Active {
+		return nil
+	}
+
+	tokenStr, err := generateSecureToken(16)
+	if err != nil {
+		return errors.InternalErr(err)
+	}
+
+	activationToken := &model.ActivationToken{
+		IdentityID: identity.ID,
+		Token:      tokenStr,
+		ExpiresAt:  time.Now().Add(24 * time.Hour),
+	}
+
+	if err := s.txManager.WithinTransaction(ctx, func(txCtx context.Context) error {
+		if err := s.activationTokenRepo.DeleteByIdentityID(txCtx, identity.ID); err != nil {
+			return errors.InternalErr(err)
+		}
+
+		if err := s.activationTokenRepo.Create(txCtx, activationToken); err != nil {
+			return errors.InternalErr(err)
+		}
+
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	activationBase := strings.TrimRight(s.cfg.URLs.FrontendBaseURL, "/")
+	link := fmt.Sprintf("%s/activate?token=%s", activationBase, url.QueryEscape(tokenStr))
+
+	if err := s.emailService.Send(
+		identity.Email,
+		"Welcome",
+		fmt.Sprintf("Kliknite ovde da postavite lozinku: %s", link),
+	); err != nil {
+		return errors.ServiceUnavailableErr(err)
+	}
+
 	return nil
 }
 
