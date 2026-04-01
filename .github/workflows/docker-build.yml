@@ -47,7 +47,7 @@ jobs:
           push: ${{ github.event_name == 'push' }}
           build-args: |
             SERVICE=${{ matrix.service }}
-          tags: ghcr.io/RAF-SI-2025/Banka-4-Backend/${{ matrix.service }}:latest
+          tags: ghcr.io/raf-si-2025/banka-4-backend/${{ matrix.service }}:latest
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
 
