@@ -58,6 +58,7 @@ type OptionResponse struct {
 	ImpliedVolatility float64   `json:"implied_volatility"`
 	OpenInterest      int       `json:"open_interest"`
 }
+
 type DailyPriceResponse struct {
 	Date   time.Time `json:"date"`
 	Price  float64   `json:"price"`
