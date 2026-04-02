@@ -15,6 +15,228 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/actuary/{actId}/assets": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns all currently held asset positions for an actuary (employee agent/supervisor), aggregated from all orders. Only approved orders with fills are counted. Includes stocks, futures, options, and forex pairs.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "portfolio"
+                ],
+                "summary": "Get portfolio for an actuary/agent",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Actuary ID",
+                        "name": "actId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/dto.PortfolioAssetResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/client/{clientId}/assets": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns all currently held asset positions for a client, aggregated from all orders. Only approved orders with fills are counted. Includes stocks, futures, options, and forex pairs.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "portfolio"
+                ],
+                "summary": "Get portfolio for a client",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Client ID",
+                        "name": "clientId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/dto.PortfolioAssetResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/exchange": {
+            "get": {
+                "description": "Returns a paginated list of all stock exchanges",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "exchange"
+                ],
+                "summary": "Get all exchanges",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/exchange/{micCode}/toggle": {
+            "patch": {
+                "description": "Enables or disables trading time enforcement for a specific exchange (for testing purposes)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "exchange"
+                ],
+                "summary": "Toggle trading enabled for an exchange",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Exchange MIC code",
+                        "name": "micCode",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ExchangeResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/health": {
             "get": {
                 "description": "Returns service health status",
@@ -37,6 +259,1356 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/api/listings/forex": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "listings"
+                ],
+                "summary": "List forex pairs",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Search by base/quote",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Min rate",
+                        "name": "price_min",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Max rate",
+                        "name": "price_max",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "asc|desc",
+                        "name": "sort_dir",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.PaginatedForexResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/listings/futures": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "listings"
+                ],
+                "summary": "List futures contracts",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Search by ticker or name",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Exchange MIC prefix",
+                        "name": "exchange",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Min price",
+                        "name": "price_min",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Max price",
+                        "name": "price_max",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Min ask",
+                        "name": "ask_min",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Max ask",
+                        "name": "ask_max",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Min bid",
+                        "name": "bid_min",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Max bid",
+                        "name": "bid_max",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Min volume",
+                        "name": "volume_min",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Max volume",
+                        "name": "volume_max",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by settlement date (YYYY-MM-DD)",
+                        "name": "settlement_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "price|volume|maintenance_margin",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "asc|desc",
+                        "name": "sort_dir",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.PaginatedFuturesResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/listings/options": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "listings"
+                ],
+                "summary": "List options",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Search by ticker or name",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Exchange MIC prefix",
+                        "name": "exchange",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Min price",
+                        "name": "price_min",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Max price",
+                        "name": "price_max",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Min ask",
+                        "name": "ask_min",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Max ask",
+                        "name": "ask_max",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Min bid",
+                        "name": "bid_min",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Max bid",
+                        "name": "bid_max",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Min volume",
+                        "name": "volume_min",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Max volume",
+                        "name": "volume_max",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by settlement date (YYYY-MM-DD)",
+                        "name": "settlement_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "price|volume|maintenance_margin",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "asc|desc",
+                        "name": "sort_dir",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.PaginatedOptionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/listings/stock/listingId": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieves stock information for a specific listing by its ID.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "listings"
+                ],
+                "summary": "Get stock details",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Listing ID",
+                        "name": "listingId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.StockDetailedResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/listings/stocks": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "listings"
+                ],
+                "summary": "List stocks",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Search by ticker or name",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Exchange MIC prefix",
+                        "name": "exchange",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Min price",
+                        "name": "price_min",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Max price",
+                        "name": "price_max",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Min ask",
+                        "name": "ask_min",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Max ask",
+                        "name": "ask_max",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Min bid",
+                        "name": "bid_min",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Max bid",
+                        "name": "bid_max",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Min volume",
+                        "name": "volume_min",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Max volume",
+                        "name": "volume_max",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "price|volume|maintenance_margin",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "asc|desc",
+                        "name": "sort_dir",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.PaginatedStockResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/orders": {
+            "get": {
+                "description": "Returns a paginated and filtered list of orders. Clients see only their own orders, employees see all.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "orders"
+                ],
+                "summary": "Get all orders",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by status (PENDING, APPROVED, DECLINED)",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by direction (BUY, SELL)",
+                        "name": "direction",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filter by completion status",
+                        "name": "is_done",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ListOrdersResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Creates a buy or sell order for a listing",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "orders"
+                ],
+                "summary": "Create a new order",
+                "parameters": [
+                    {
+                        "description": "Order details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.CreateOrderRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/dto.OrderResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/orders/{id}/approve": {
+            "patch": {
+                "description": "Supervisor approves a pending order",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "orders"
+                ],
+                "summary": "Approve a pending order",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Order ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.OrderResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/orders/{id}/cancel": {
+            "patch": {
+                "description": "Cancel a pending or approved order that hasn't been fully executed",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "orders"
+                ],
+                "summary": "Cancel an order",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Order ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.OrderResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/orders/{id}/decline": {
+            "patch": {
+                "description": "Supervisor declines a pending order",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "orders"
+                ],
+                "summary": "Decline a pending order",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Order ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.OrderResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "dto.AssetType": {
+            "type": "string",
+            "enum": [
+                "STOCK",
+                "FUTURES",
+                "OPTION",
+                "FOREX"
+            ],
+            "x-enum-varnames": [
+                "AssetTypeStock",
+                "AssetTypeFutures",
+                "AssetTypeOption",
+                "AssetTypeForex"
+            ]
+        },
+        "dto.CreateOrderRequest": {
+            "type": "object",
+            "required": [
+                "account_number",
+                "direction",
+                "listing_id",
+                "order_type",
+                "quantity"
+            ],
+            "properties": {
+                "account_number": {
+                    "type": "string"
+                },
+                "all_or_none": {
+                    "type": "boolean"
+                },
+                "direction": {
+                    "enum": [
+                        "BUY",
+                        "SELL"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.OrderDirection"
+                        }
+                    ]
+                },
+                "limit_value": {
+                    "type": "number"
+                },
+                "listing_id": {
+                    "type": "integer"
+                },
+                "margin": {
+                    "type": "boolean"
+                },
+                "order_type": {
+                    "enum": [
+                        "MARKET",
+                        "LIMIT",
+                        "STOP",
+                        "STOP_LIMIT"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.OrderType"
+                        }
+                    ]
+                },
+                "quantity": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "stop_value": {
+                    "type": "number"
+                }
+            }
+        },
+        "dto.DailyPriceResponse": {
+            "type": "object",
+            "properties": {
+                "ask": {
+                    "type": "number"
+                },
+                "bid": {
+                    "type": "number"
+                },
+                "change": {
+                    "type": "number"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "price": {
+                    "type": "number"
+                },
+                "volume": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.ExchangeResponse": {
+            "type": "object",
+            "properties": {
+                "acronym": {
+                    "type": "string"
+                },
+                "close_time": {
+                    "type": "string"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "exchange_id": {
+                    "type": "integer"
+                },
+                "mic_code": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "open_time": {
+                    "type": "string"
+                },
+                "polity": {
+                    "type": "string"
+                },
+                "time_zone": {
+                    "type": "integer"
+                },
+                "trading_enabled": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "dto.ForexResponse": {
+            "type": "object",
+            "properties": {
+                "ask": {
+                    "type": "number"
+                },
+                "base": {
+                    "type": "string"
+                },
+                "bid": {
+                    "type": "number"
+                },
+                "change": {
+                    "type": "number"
+                },
+                "forexPairId": {
+                    "type": "integer"
+                },
+                "initialMarginCost": {
+                    "type": "number"
+                },
+                "maintenanceMargin": {
+                    "type": "number"
+                },
+                "price": {
+                    "type": "number"
+                },
+                "quote": {
+                    "type": "string"
+                },
+                "ticker": {
+                    "type": "string"
+                },
+                "volume": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.FuturesResponse": {
+            "type": "object",
+            "properties": {
+                "ask": {
+                    "type": "number"
+                },
+                "bid": {
+                    "type": "number"
+                },
+                "change": {
+                    "type": "number"
+                },
+                "contract_size": {
+                    "type": "number"
+                },
+                "contract_unit": {
+                    "type": "string"
+                },
+                "exchange": {
+                    "type": "string"
+                },
+                "initial_margin_cost": {
+                    "type": "number"
+                },
+                "listing_id": {
+                    "type": "integer"
+                },
+                "maintenance_margin": {
+                    "type": "number"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "price": {
+                    "type": "number"
+                },
+                "settlement_date": {
+                    "type": "string"
+                },
+                "ticker": {
+                    "type": "string"
+                },
+                "volume": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.ListOrdersResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.OrderSummaryResponse"
+                    }
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "page_size": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.OptionResponse": {
+            "type": "object",
+            "properties": {
+                "ask": {
+                    "type": "number"
+                },
+                "bid": {
+                    "type": "number"
+                },
+                "change": {
+                    "type": "number"
+                },
+                "exchange": {
+                    "type": "string"
+                },
+                "implied_volatility": {
+                    "type": "number"
+                },
+                "initial_margin_cost": {
+                    "type": "number"
+                },
+                "listing_id": {
+                    "type": "integer"
+                },
+                "maintenance_margin": {
+                    "type": "number"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "open_interest": {
+                    "type": "integer"
+                },
+                "option_type": {
+                    "type": "string"
+                },
+                "price": {
+                    "type": "number"
+                },
+                "settlement_date": {
+                    "type": "string"
+                },
+                "strike": {
+                    "type": "number"
+                },
+                "ticker": {
+                    "type": "string"
+                },
+                "volume": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.OrderResponse": {
+            "type": "object",
+            "properties": {
+                "account_number": {
+                    "type": "string"
+                },
+                "after_hours": {
+                    "type": "boolean"
+                },
+                "all_or_none": {
+                    "type": "boolean"
+                },
+                "approved_by": {
+                    "type": "integer"
+                },
+                "contract_size": {
+                    "type": "number"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "direction": {
+                    "$ref": "#/definitions/model.OrderDirection"
+                },
+                "is_done": {
+                    "type": "boolean"
+                },
+                "limit_value": {
+                    "type": "number"
+                },
+                "listing_id": {
+                    "type": "integer"
+                },
+                "listing_name": {
+                    "type": "string"
+                },
+                "margin": {
+                    "type": "boolean"
+                },
+                "order_id": {
+                    "type": "integer"
+                },
+                "order_type": {
+                    "$ref": "#/definitions/model.OrderType"
+                },
+                "price_per_unit": {
+                    "type": "number"
+                },
+                "quantity": {
+                    "type": "integer"
+                },
+                "remaining_portions": {
+                    "type": "integer"
+                },
+                "status": {
+                    "$ref": "#/definitions/model.OrderStatus"
+                },
+                "stop_value": {
+                    "type": "number"
+                },
+                "ticker": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.OrderSummaryResponse": {
+            "type": "object",
+            "properties": {
+                "contract_size": {
+                    "type": "number"
+                },
+                "direction": {
+                    "$ref": "#/definitions/model.OrderDirection"
+                },
+                "listing_name": {
+                    "type": "string"
+                },
+                "order_id": {
+                    "type": "integer"
+                },
+                "price_per_unit": {
+                    "type": "number"
+                },
+                "quantity": {
+                    "type": "integer"
+                },
+                "remaining_portions": {
+                    "type": "integer"
+                },
+                "status": {
+                    "$ref": "#/definitions/model.OrderStatus"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.PaginatedForexResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.ForexResponse"
+                    }
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "pageSize": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.PaginatedFuturesResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.FuturesResponse"
+                    }
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "pageSize": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.PaginatedOptionResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.OptionResponse"
+                    }
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "pageSize": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.PaginatedStockResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.StockResponse"
+                    }
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "pageSize": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.PortfolioAssetResponse": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "lastModified": {
+                    "type": "string"
+                },
+                "outstandingShares": {
+                    "type": "number"
+                },
+                "pricePerUnit": {
+                    "type": "number"
+                },
+                "profit": {
+                    "type": "number"
+                },
+                "taxAmount": {
+                    "type": "number"
+                },
+                "ticker": {
+                    "type": "string"
+                },
+                "type": {
+                    "$ref": "#/definitions/dto.AssetType"
+                }
+            }
+        },
+        "dto.StockDetailedResponse": {
+            "type": "object",
+            "properties": {
+                "ask": {
+                    "type": "number"
+                },
+                "bid": {
+                    "type": "number"
+                },
+                "change": {
+                    "type": "number"
+                },
+                "dividend_yield": {
+                    "type": "number"
+                },
+                "exchange": {
+                    "type": "string"
+                },
+                "history": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.DailyPriceResponse"
+                    }
+                },
+                "initial_margin_cost": {
+                    "type": "number"
+                },
+                "listing_id": {
+                    "type": "integer"
+                },
+                "maintenance_margin": {
+                    "type": "number"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "options": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.OptionResponse"
+                    }
+                },
+                "outstanding_shares": {
+                    "type": "number"
+                },
+                "price": {
+                    "type": "number"
+                },
+                "ticker": {
+                    "type": "string"
+                },
+                "volume": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.StockResponse": {
+            "type": "object",
+            "properties": {
+                "ask": {
+                    "type": "number"
+                },
+                "bid": {
+                    "type": "number"
+                },
+                "change": {
+                    "type": "number"
+                },
+                "dividend_yield": {
+                    "type": "number"
+                },
+                "exchange": {
+                    "type": "string"
+                },
+                "initial_margin_cost": {
+                    "type": "number"
+                },
+                "listing_id": {
+                    "type": "integer"
+                },
+                "maintenance_margin": {
+                    "type": "number"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "outstanding_shares": {
+                    "type": "number"
+                },
+                "price": {
+                    "type": "number"
+                },
+                "ticker": {
+                    "type": "string"
+                },
+                "volume": {
+                    "type": "integer"
+                }
+            }
+        },
+        "errors.AppError": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.OrderDirection": {
+            "type": "string",
+            "enum": [
+                "BUY",
+                "SELL"
+            ],
+            "x-enum-varnames": [
+                "OrderDirectionBuy",
+                "OrderDirectionSell"
+            ]
+        },
+        "model.OrderStatus": {
+            "type": "string",
+            "enum": [
+                "PENDING",
+                "APPROVED",
+                "DECLINED"
+            ],
+            "x-enum-varnames": [
+                "OrderStatusPending",
+                "OrderStatusApproved",
+                "OrderStatusDeclined"
+            ]
+        },
+        "model.OrderType": {
+            "type": "string",
+            "enum": [
+                "MARKET",
+                "LIMIT",
+                "STOP",
+                "STOP_LIMIT"
+            ],
+            "x-enum-varnames": [
+                "OrderTypeMarket",
+                "OrderTypeLimit",
+                "OrderTypeStop",
+                "OrderTypeStopLimit"
+            ]
         }
     },
     "securityDefinitions": {

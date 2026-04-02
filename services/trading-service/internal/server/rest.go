@@ -7,8 +7,11 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/RAF-SI-2025/Banka-4-Backend/common/pkg/auth"
+	"github.com/RAF-SI-2025/Banka-4-Backend/common/pkg/pb"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/handler"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/config"
+	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/middleware"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/validator"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -21,12 +24,12 @@ import (
 	_ "github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/docs"
 )
 
-func NewServer(lc fx.Lifecycle, cfg *config.Configuration, healthHandler *handler.HealthHandler, exchangeHandler *handler.ExchangeHandler) {
+func NewServer(lc fx.Lifecycle, cfg *config.Configuration, healthHandler *handler.HealthHandler, exchangeHandler *handler.ExchangeHandler, orderHandler *handler.OrderHandler, portfolioHandler *handler.PortfolioHandler, listingHandler *handler.ListingHandler, verifier auth.TokenVerifier, permProvider auth.PermissionProvider, userClient pb.UserServiceClient) {
 	r := gin.New()
 
 	InitRouter(r, cfg)
 
-	SetupRoutes(r, healthHandler, exchangeHandler)
+	SetupRoutes(r, healthHandler, exchangeHandler, orderHandler, portfolioHandler, listingHandler, verifier, permProvider, userClient)
 
 	server := &http.Server{
 		Addr:    ":" + cfg.Port,
@@ -54,7 +57,7 @@ func InitRouter(r *gin.Engine, cfg *config.Configuration) {
 	validator.RegisterValidators()
 }
 
-func SetupRoutes(r *gin.Engine, healthHandler *handler.HealthHandler, exchangeHandler *handler.ExchangeHandler) {
+func SetupRoutes(r *gin.Engine, healthHandler *handler.HealthHandler, exchangeHandler *handler.ExchangeHandler, orderHandler *handler.OrderHandler, portfolioHandler *handler.PortfolioHandler, listingHandler *handler.ListingHandler, verifier auth.TokenVerifier, permProvider auth.PermissionProvider, userClient pb.UserServiceClient) {
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	api := r.Group("/api")
@@ -65,6 +68,39 @@ func SetupRoutes(r *gin.Engine, healthHandler *handler.HealthHandler, exchangeHa
 		{
 			exchanges.GET("", exchangeHandler.GetAll)
 			exchanges.PATCH("/:micCode/toggle", exchangeHandler.ToggleTradingEnabled)
+		}
+    
+		listings := api.Group("/listings")
+		listings.Use(auth.Middleware(verifier, permProvider))
+		{
+			stocks := listings.Group("/stocks")
+			stocks.Use(auth.AnyOf(middleware.RequireSupervisor(userClient), middleware.RequireAgent(userClient), auth.RequireIdentityType(auth.IdentityClient)))
+			{
+				stocks.GET("", listingHandler.GetStocks)
+				stocks.GET("/:listingId", listingHandler.GetStockDetails)
+			}
+			listings.GET("/futures", auth.AnyOf(middleware.RequireSupervisor(userClient), middleware.RequireAgent(userClient), auth.RequireIdentityType(auth.IdentityClient)),  listingHandler.GetFutures)
+			listings.GET("/forex", auth.AnyOf(middleware.RequireSupervisor(userClient), middleware.RequireAgent(userClient)), listingHandler.GetForex)
+			listings.GET("/options", auth.AnyOf(middleware.RequireSupervisor(userClient), middleware.RequireAgent(userClient)), listingHandler.GetOptions)
+    }
+
+		authMw := auth.Middleware(verifier, permProvider)
+
+		client := api.Group("/client")
+		client.Use(authMw, auth.RequireClientSelf("clientId", true))
+		client.GET("/:clientId/assets", portfolioHandler.GetClientPortfolio)
+
+		actuary := api.Group("/actuary")
+		actuary.Use(authMw, auth.RequireIdentityType(auth.IdentityEmployee))
+		actuary.GET("/:actId/assets", portfolioHandler.GetActuaryPortfolio)
+		orders := api.Group("/orders")
+		orders.Use(auth.Middleware(verifier, permProvider))
+		{
+			orders.GET("", middleware.RequireSupervisor(userClient), orderHandler.GetOrders)
+			orders.POST("", orderHandler.CreateOrder)
+			orders.PATCH("/:id/approve", middleware.RequireSupervisor(userClient), orderHandler.ApproveOrder)
+			orders.PATCH("/:id/decline", middleware.RequireSupervisor(userClient), orderHandler.DeclineOrder)
+			orders.PATCH("/:id/cancel", orderHandler.CancelOrder)
 		}
 	}
 }

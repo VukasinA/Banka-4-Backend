@@ -1,0 +1,785 @@
+package service
+
+import (
+	"context"
+	"log"
+	"math"
+	"math/rand"
+	"strings"
+	"sync"
+	"time"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
+	"github.com/RAF-SI-2025/Banka-4-Backend/common/pkg/auth"
+	"github.com/RAF-SI-2025/Banka-4-Backend/common/pkg/errors"
+	"github.com/RAF-SI-2025/Banka-4-Backend/common/pkg/pb"
+	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/dto"
+	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/model"
+	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/repository"
+)
+
+const (
+	orderExecutionPollInterval = time.Second
+	stopCheckInterval          = 5 * time.Second
+	executionRetryInterval     = 30 * time.Second
+	maxOrdersPerTick           = 25
+	afterHoursWindow           = 4 * time.Hour
+	afterHoursExecutionDelay   = 30 * time.Minute
+)
+
+type exchangeSession struct {
+	IsClosed   bool
+	IsOpen     bool
+	AfterHours bool
+	NextOpen   time.Time
+	LocalNow   time.Time
+	CloseTime  time.Time
+}
+
+type tradeSettlement struct {
+	SourceAmount        float64
+	SourceCurrency      string
+	DestinationAmount   float64
+	DestinationCurrency string
+}
+
+type OrderService struct {
+	orderRepo            repository.OrderRepository
+	orderTransactionRepo repository.OrderTransactionRepository
+	exchangeRepo         repository.ExchangeRepository
+	listingRepo          repository.ListingRepository
+	userClient           pb.UserServiceClient
+	bankingClient        pb.BankingServiceClient
+
+	now func() time.Time
+	rng *rand.Rand
+
+	mu     sync.Mutex
+	cancel context.CancelFunc
+}
+
+func NewOrderService(
+	orderRepo repository.OrderRepository,
+	orderTransactionRepo repository.OrderTransactionRepository,
+	exchangeRepo repository.ExchangeRepository,
+	listingRepo repository.ListingRepository,
+	userClient pb.UserServiceClient,
+	bankingClient pb.BankingServiceClient,
+) *OrderService {
+	return &OrderService{
+		orderRepo:            orderRepo,
+		orderTransactionRepo: orderTransactionRepo,
+		exchangeRepo:         exchangeRepo,
+		listingRepo:          listingRepo,
+		userClient:           userClient,
+		bankingClient:        bankingClient,
+		now:                  time.Now,
+		rng:                  rand.New(rand.NewSource(time.Now().UnixNano())),
+	}
+}
+
+func (s *OrderService) Start() {
+	s.mu.Lock()
+	if s.cancel != nil {
+		s.mu.Unlock()
+		return
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	s.cancel = cancel
+	s.mu.Unlock()
+
+	ticker := time.NewTicker(orderExecutionPollInterval)
+	go func() {
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				if err := s.processDueOrders(ctx); err != nil {
+					log.Printf("[orders] execution tick failed: %v", err)
+				}
+			}
+		}
+	}()
+}
+
+func (s *OrderService) Stop() {
+	s.mu.Lock()
+	cancel := s.cancel
+	s.cancel = nil
+	s.mu.Unlock()
+
+	if cancel != nil {
+		cancel()
+	}
+}
+
+func (s *OrderService) GetOrders(ctx context.Context, query dto.ListOrdersQuery) ([]model.Order, int64, error) {
+	orders, total, err := s.orderRepo.FindAll(ctx, query.Page, query.PageSize, nil, query.Status, query.Direction, query.IsDone)
+	if err != nil {
+		return nil, 0, errors.InternalErr(err)
+	}
+
+	return orders, total, nil
+}
+
+func (s *OrderService) CreateOrder(ctx context.Context, req dto.CreateOrderRequest) (*model.Order, error) {
+	if err := validateOrderTypeFields(req); err != nil {
+		return nil, err
+	}
+
+	authCtx := auth.GetAuthFromContext(ctx)
+	if authCtx == nil {
+		return nil, errors.UnauthorizedErr("not authenticated")
+	}
+
+	if err := s.validateAccount(ctx, req.AccountNumber, authCtx); err != nil {
+		return nil, err
+	}
+
+	listing, err := s.listingRepo.FindByID(ctx, req.ListingID)
+	if err != nil {
+		return nil, errors.InternalErr(err)
+	}
+	if listing == nil {
+		return nil, errors.NotFoundErr("listing not found")
+	}
+
+	exchange, err := s.exchangeRepo.FindByMicCode(ctx, listing.ExchangeMIC)
+	if err != nil {
+		return nil, errors.InternalErr(err)
+	}
+	if exchange == nil {
+		return nil, errors.NotFoundErr("exchange not found")
+	}
+
+	initialPricePerUnit := calculateInitialPricePerUnit(req, listing)
+	session := s.resolveExchangeSession(exchange)
+	order := model.Order{
+		UserID:            authCtx.IdentityID,
+		AccountNumber:     req.AccountNumber,
+		ListingID:         req.ListingID,
+		Listing:           *listing,
+		OrderType:         req.OrderType,
+		Direction:         req.Direction,
+		Quantity:          req.Quantity,
+		ContractSize:      1,
+		PricePerUnit:      initialPricePerUnit,
+		LimitValue:        req.LimitValue,
+		StopValue:         req.StopValue,
+		AllOrNone:         req.AllOrNone,
+		Margin:            req.Margin,
+		AfterHours:        session.AfterHours,
+		Triggered:         req.OrderType == model.OrderTypeMarket || req.OrderType == model.OrderTypeLimit,
+		CommissionCharged: false,
+		CommissionExempt:  authCtx.IdentityType == auth.IdentityEmployee,
+		IsDone:            false,
+		CreatedAt:         s.now(),
+		UpdatedAt:         s.now(),
+	}
+
+	order.Status = s.resolveOrderStatus(ctx, authCtx, &order)
+	if order.Status == model.OrderStatusApproved {
+		nextExecutionAt := s.initialExecutionTime(session, order.AfterHours)
+		order.NextExecutionAt = &nextExecutionAt
+	}
+
+	if err := s.orderRepo.Create(ctx, &order); err != nil {
+		return nil, errors.InternalErr(err)
+	}
+
+	return &order, nil
+}
+
+func (s *OrderService) ApproveOrder(ctx context.Context, orderID uint) (*model.Order, error) {
+	order, err := s.orderRepo.FindByID(ctx, orderID)
+	if err != nil {
+		return nil, errors.InternalErr(err)
+	}
+	if order == nil {
+		return nil, errors.NotFoundErr("order not found")
+	}
+	if order.Status != model.OrderStatusPending {
+		return nil, errors.BadRequestErr("only pending orders can be approved")
+	}
+
+	authCtx := auth.GetAuthFromContext(ctx)
+	if authCtx == nil {
+		return nil, errors.UnauthorizedErr("not authenticated")
+	}
+
+	exchange, err := s.exchangeRepo.FindByMicCode(ctx, order.Listing.ExchangeMIC)
+	if err != nil {
+		return nil, errors.InternalErr(err)
+	}
+	if exchange == nil {
+		return nil, errors.NotFoundErr("exchange not found")
+	}
+
+	approverID := authCtx.IdentityID
+	nextExecutionAt := s.initialExecutionTime(s.resolveExchangeSession(exchange), order.AfterHours)
+	order.Status = model.OrderStatusApproved
+	order.ApprovedBy = &approverID
+	order.NextExecutionAt = &nextExecutionAt
+	order.UpdatedAt = s.now()
+
+	if err := s.orderRepo.Save(ctx, order); err != nil {
+		return nil, errors.InternalErr(err)
+	}
+
+	return order, nil
+}
+
+func (s *OrderService) DeclineOrder(ctx context.Context, orderID uint) (*model.Order, error) {
+	order, err := s.orderRepo.FindByID(ctx, orderID)
+	if err != nil {
+		return nil, errors.InternalErr(err)
+	}
+	if order == nil {
+		return nil, errors.NotFoundErr("order not found")
+	}
+	if order.Status != model.OrderStatusPending {
+		return nil, errors.BadRequestErr("only pending orders can be declined")
+	}
+
+	authCtx := auth.GetAuthFromContext(ctx)
+	if authCtx == nil {
+		return nil, errors.UnauthorizedErr("not authenticated")
+	}
+
+	approverID := authCtx.IdentityID
+	order.Status = model.OrderStatusDeclined
+	order.ApprovedBy = &approverID
+	order.IsDone = true
+	order.NextExecutionAt = nil
+	order.UpdatedAt = s.now()
+
+	if err := s.orderRepo.Save(ctx, order); err != nil {
+		return nil, errors.InternalErr(err)
+	}
+
+	return order, nil
+}
+
+func (s *OrderService) CancelOrder(ctx context.Context, orderID uint) (*model.Order, error) {
+	order, err := s.orderRepo.FindByID(ctx, orderID)
+	if err != nil {
+		return nil, errors.InternalErr(err)
+	}
+	if order == nil {
+		return nil, errors.NotFoundErr("order not found")
+	}
+
+	authCtx := auth.GetAuthFromContext(ctx)
+	if authCtx == nil {
+		return nil, errors.UnauthorizedErr("not authenticated")
+	}
+
+	isOwner := order.UserID == authCtx.IdentityID
+	isSupervisor, err := s.checkSupervisor(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if !isOwner && !isSupervisor {
+		return nil, errors.ForbiddenErr("only the order owner or a supervisor can cancel an order")
+	}
+	if order.Status != model.OrderStatusPending && order.Status != model.OrderStatusApproved {
+		return nil, errors.BadRequestErr("only pending or approved orders can be cancelled")
+	}
+	if order.IsDone {
+		return nil, errors.BadRequestErr("cannot cancel a completed order")
+	}
+
+	order.Status = model.OrderStatusDeclined
+	order.IsDone = true
+	order.NextExecutionAt = nil
+	order.UpdatedAt = s.now()
+
+	if err := s.orderRepo.Save(ctx, order); err != nil {
+		return nil, errors.InternalErr(err)
+	}
+
+	return order, nil
+}
+
+func (s *OrderService) processDueOrders(ctx context.Context) error {
+	orders, err := s.orderRepo.FindReadyForExecution(ctx, s.now(), maxOrdersPerTick)
+	if err != nil {
+		return errors.InternalErr(err)
+	}
+
+	for i := range orders {
+		order := orders[i]
+		if err := s.processOrder(ctx, &order); err != nil {
+			log.Printf("[orders] failed to process order %d: %v", order.OrderID, err)
+		}
+	}
+
+	return nil
+}
+
+func (s *OrderService) processOrder(ctx context.Context, order *model.Order) error {
+	listing, err := s.listingRepo.FindByID(ctx, order.ListingID)
+	if err != nil {
+		return err
+	}
+	if listing == nil {
+		return s.failOrder(ctx, order, model.OrderStatusDeclined)
+	}
+	order.Listing = *listing
+
+	exchange, err := s.exchangeRepo.FindByMicCode(ctx, listing.ExchangeMIC)
+	if err != nil {
+		return err
+	}
+	if exchange == nil {
+		return s.failOrder(ctx, order, model.OrderStatusDeclined)
+	}
+
+	session := s.resolveExchangeSession(exchange)
+	if !session.IsOpen && !session.AfterHours {
+		nextOpen := s.initialExecutionTime(session, order.AfterHours)
+		order.NextExecutionAt = &nextOpen
+		order.UpdatedAt = s.now()
+		return s.orderRepo.Save(ctx, order)
+	}
+
+	if !order.Triggered {
+		if !isStopConditionMet(order, listing) {
+			nextExecutionAt := s.now().Add(stopCheckInterval)
+			order.NextExecutionAt = &nextExecutionAt
+			order.UpdatedAt = s.now()
+			return s.orderRepo.Save(ctx, order)
+		}
+		order.Triggered = true
+	}
+
+	pricePerUnit, canExecute := resolveExecutionPrice(order, listing)
+	if !canExecute {
+		nextExecutionAt := s.now().Add(stopCheckInterval)
+		order.NextExecutionAt = &nextExecutionAt
+		order.UpdatedAt = s.now()
+		return s.orderRepo.Save(ctx, order)
+	}
+
+	fillQty := s.resolveFillQuantity(order)
+	if fillQty == 0 {
+		nextExecutionAt := s.now().Add(stopCheckInterval)
+		order.NextExecutionAt = &nextExecutionAt
+		order.UpdatedAt = s.now()
+		return s.orderRepo.Save(ctx, order)
+	}
+
+	grossAmount := float64(fillQty) * order.ContractSize * pricePerUnit
+	commission := 0.0
+	settlementAmount := grossAmount
+	if !order.CommissionCharged && !order.CommissionExempt {
+		commission = calculateCommission(order.OrderType, approximateOrderValue(order, pricePerUnit))
+		if order.Direction == model.OrderDirectionBuy {
+			settlementAmount += commission
+		} else {
+			settlementAmount -= commission
+		}
+	}
+	if settlementAmount <= 0 {
+		return s.failOrder(ctx, order, model.OrderStatusDeclined)
+	}
+
+	tradeCurrency := normalizeCurrencyCode(exchange.Currency)
+	settlement, err := s.executeTradeSettlement(ctx, order, tradeCurrency, settlementAmount)
+	if err != nil {
+		st, ok := status.FromError(err)
+		if ok && (st.Code() == codes.FailedPrecondition || st.Code() == codes.NotFound) {
+			return s.failOrder(ctx, order, model.OrderStatusDeclined)
+		}
+
+		nextExecutionAt := s.now().Add(executionRetryInterval)
+		order.NextExecutionAt = &nextExecutionAt
+		order.UpdatedAt = s.now()
+		if saveErr := s.orderRepo.Save(ctx, order); saveErr != nil {
+			return saveErr
+		}
+		return err
+	}
+
+	orderTransaction := &model.OrderTransaction{
+		OrderID:      order.OrderID,
+		Quantity:     fillQty,
+		PricePerUnit: pricePerUnit,
+		TotalPrice:   grossAmount,
+		Commission:   commission,
+		ExecutedAt:   s.now(),
+		CreatedAt:    s.now(),
+	}
+	if err := s.orderTransactionRepo.Create(ctx, orderTransaction); err != nil {
+		return err
+	}
+
+	order.FilledQty += fillQty
+	order.CommissionCharged = order.CommissionCharged || commission > 0
+	order.PricePerUnit = &pricePerUnit
+	order.UpdatedAt = s.now()
+
+	if order.RemainingPortions() == 0 {
+		order.IsDone = true
+		order.NextExecutionAt = nil
+	} else {
+		nextExecutionAt := s.nextExecutionAt(ctx, order)
+		order.NextExecutionAt = &nextExecutionAt
+	}
+
+	if err := s.orderRepo.Save(ctx, order); err != nil {
+		return err
+	}
+
+	_ = settlement
+	return nil
+}
+
+func (s *OrderService) resolveOrderStatus(ctx context.Context, authCtx *auth.AuthContext, order *model.Order) model.OrderStatus {
+	if authCtx.IdentityType == auth.IdentityClient {
+		return model.OrderStatusApproved
+	}
+
+	if authCtx.IdentityType != auth.IdentityEmployee || authCtx.EmployeeID == nil {
+		return model.OrderStatusPending
+	}
+
+	resp, err := s.userClient.GetEmployeeById(ctx, &pb.GetEmployeeByIdRequest{
+		Id: uint64(*authCtx.EmployeeID),
+	})
+	if err != nil {
+		return model.OrderStatusPending
+	}
+	if !resp.IsAgent {
+		return model.OrderStatusPending
+	}
+	if resp.NeedApproval {
+		return model.OrderStatusPending
+	}
+
+	orderValue := approximateOrderValue(order, dereferencePrice(order.PricePerUnit))
+	if orderValue > resp.OrderLimit-resp.UsedLimit {
+		return model.OrderStatusPending
+	}
+
+	return model.OrderStatusApproved
+}
+
+func (s *OrderService) validateAccount(ctx context.Context, accountNumber string, authCtx *auth.AuthContext) error {
+	account, err := s.bankingClient.GetAccountByNumber(ctx, &pb.GetAccountByNumberRequest{
+		AccountNumber: accountNumber,
+	})
+	if err != nil {
+		st, ok := status.FromError(err)
+		if ok && st.Code() == codes.NotFound {
+			return errors.NotFoundErr("account not found")
+		}
+		return errors.ServiceUnavailableErr(err)
+	}
+
+	if authCtx.IdentityType == auth.IdentityClient {
+		if authCtx.ClientID == nil || uint64(*authCtx.ClientID) != account.ClientId {
+			return errors.ForbiddenErr("account does not belong to you")
+		}
+	} else if authCtx.IdentityType == auth.IdentityEmployee {
+		if account.AccountType != "Bank" {
+			return errors.BadRequestErr("employees must use a bank account")
+		}
+	}
+
+	return nil
+}
+
+func (s *OrderService) checkSupervisor(ctx context.Context) (bool, error) {
+	authCtx := auth.GetAuthFromContext(ctx)
+	if authCtx == nil || authCtx.IdentityType != auth.IdentityEmployee || authCtx.EmployeeID == nil {
+		return false, nil
+	}
+
+	resp, err := s.userClient.GetEmployeeById(ctx, &pb.GetEmployeeByIdRequest{
+		Id: uint64(*authCtx.EmployeeID),
+	})
+	if err != nil {
+		return false, errors.InternalErr(err)
+	}
+
+	return resp.IsSupervisor, nil
+}
+
+func (s *OrderService) resolveExchangeSession(exchange *model.Exchange) exchangeSession {
+	now := s.now()
+	if exchange == nil || !exchange.TradingEnabled {
+		return exchangeSession{IsOpen: true, LocalNow: now}
+	}
+
+	localNow := now.UTC().Add(time.Duration(exchange.TimeZone) * time.Hour)
+	openTime, openErr := time.Parse("15:04", exchange.OpenTime)
+	closeTime, closeErr := time.Parse("15:04", exchange.CloseTime)
+	if openErr != nil || closeErr != nil {
+		return exchangeSession{IsOpen: true, LocalNow: localNow}
+	}
+
+	openToday := time.Date(localNow.Year(), localNow.Month(), localNow.Day(), openTime.Hour(), openTime.Minute(), 0, 0, localNow.Location())
+	closeToday := time.Date(localNow.Year(), localNow.Month(), localNow.Day(), closeTime.Hour(), closeTime.Minute(), 0, 0, localNow.Location())
+	nextOpen := nextTradingOpen(openToday)
+	lastClose := previousTradingClose(closeToday, localNow)
+	isAfterHours := !localNow.Before(lastClose) && localNow.Before(lastClose.Add(afterHoursWindow))
+
+	if isWeekend(localNow) {
+		return exchangeSession{IsClosed: true, IsOpen: false, AfterHours: isAfterHours, NextOpen: nextOpen, LocalNow: localNow, CloseTime: closeToday}
+	}
+
+	switch {
+	case localNow.Before(openToday):
+		nextOpen = nextTradingOpen(openToday)
+		return exchangeSession{IsClosed: true, IsOpen: false, AfterHours: isAfterHours, NextOpen: nextOpen, LocalNow: localNow, CloseTime: closeToday}
+	case localNow.Before(closeToday):
+		return exchangeSession{IsOpen: true, LocalNow: localNow, CloseTime: closeToday}
+	default:
+		nextOpen = nextTradingOpen(openToday.Add(24 * time.Hour))
+		return exchangeSession{IsClosed: true, IsOpen: false, AfterHours: isAfterHours, NextOpen: nextOpen, LocalNow: localNow, CloseTime: closeToday}
+	}
+}
+
+func previousTradingClose(candidate time.Time, localNow time.Time) time.Time {
+	if !localNow.After(candidate) {
+		candidate = candidate.Add(-24 * time.Hour)
+	}
+
+	for isWeekend(candidate) {
+		candidate = candidate.Add(-24 * time.Hour)
+	}
+
+	return candidate
+}
+
+func nextTradingOpen(candidate time.Time) time.Time {
+	for isWeekend(candidate) {
+		candidate = candidate.Add(24 * time.Hour)
+	}
+
+	return candidate
+}
+
+func isWeekend(t time.Time) bool {
+	return t.Weekday() == time.Saturday || t.Weekday() == time.Sunday
+}
+
+func (s *OrderService) initialExecutionTime(session exchangeSession, afterHours bool) time.Time {
+	if afterHours {
+		return s.now().Add(afterHoursExecutionDelay)
+	}
+
+	nextExecutionAt := s.now()
+	if session.IsOpen {
+		return nextExecutionAt
+	}
+
+	nextExecutionAt = session.NextOpen
+	return nextExecutionAt
+}
+
+func (s *OrderService) nextExecutionAt(ctx context.Context, order *model.Order) time.Time {
+	remaining := order.RemainingPortions()
+	if remaining == 0 {
+		return s.now()
+	}
+
+	volume := math.Max(float64(s.resolveDailyVolume(ctx, order.ListingID)), 10)
+	maxSeconds := math.Max(1, float64(24*60)/(volume/float64(remaining)))
+	waitSeconds := s.rng.Float64() * maxSeconds
+	nextExecutionAt := s.now().Add(time.Duration(waitSeconds * float64(time.Second)))
+	if order.AfterHours {
+		nextExecutionAt = nextExecutionAt.Add(afterHoursExecutionDelay)
+	}
+
+	return nextExecutionAt
+}
+
+func (s *OrderService) resolveDailyVolume(ctx context.Context, listingID uint) uint {
+	dailyInfo, err := s.listingRepo.FindLatestDailyPriceInfo(ctx, listingID)
+	if err != nil || dailyInfo == nil || dailyInfo.Volume == 0 {
+		return 0
+	}
+
+	return dailyInfo.Volume
+}
+
+func (s *OrderService) resolveFillQuantity(order *model.Order) uint {
+	remaining := order.RemainingPortions()
+	if remaining == 0 {
+		return 0
+	}
+	if order.AllOrNone {
+		return remaining
+	}
+	if remaining == 1 {
+		return 1
+	}
+
+	return uint(s.rng.Intn(int(remaining)) + 1)
+}
+
+func (s *OrderService) executeTradeSettlement(ctx context.Context, order *model.Order, tradeCurrency string, amount float64) (*tradeSettlement, error) {
+	direction := pb.TradeSettlementDirection_TRADE_SETTLEMENT_DIRECTION_BUY
+	if order.Direction == model.OrderDirectionSell {
+		direction = pb.TradeSettlementDirection_TRADE_SETTLEMENT_DIRECTION_SELL
+	}
+
+	resp, err := s.bankingClient.ExecuteTradeSettlement(ctx, &pb.ExecuteTradeSettlementRequest{
+		AccountNumber:     order.AccountNumber,
+		TradeCurrencyCode: tradeCurrency,
+		Direction:         direction,
+		Amount:            amount,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &tradeSettlement{
+		SourceAmount:        resp.GetSourceAmount(),
+		SourceCurrency:      resp.GetSourceCurrencyCode(),
+		DestinationAmount:   resp.GetDestinationAmount(),
+		DestinationCurrency: resp.GetDestinationCurrencyCode(),
+	}, nil
+}
+
+func (s *OrderService) failOrder(ctx context.Context, order *model.Order, statusValue model.OrderStatus) error {
+	order.Status = statusValue
+	order.IsDone = true
+	order.NextExecutionAt = nil
+	order.UpdatedAt = s.now()
+	return s.orderRepo.Save(ctx, order)
+}
+
+func validateOrderTypeFields(req dto.CreateOrderRequest) error {
+	switch req.OrderType {
+	case model.OrderTypeLimit:
+		if req.LimitValue == nil {
+			return errors.BadRequestErr("limitValue is required for LIMIT orders")
+		}
+	case model.OrderTypeStop:
+		if req.StopValue == nil {
+			return errors.BadRequestErr("stopValue is required for STOP orders")
+		}
+	case model.OrderTypeStopLimit:
+		if req.LimitValue == nil {
+			return errors.BadRequestErr("limitValue is required for STOP_LIMIT orders")
+		}
+		if req.StopValue == nil {
+			return errors.BadRequestErr("stopValue is required for STOP_LIMIT orders")
+		}
+	}
+	return nil
+}
+
+func calculateInitialPricePerUnit(req dto.CreateOrderRequest, listing *model.Listing) *float64 {
+	switch req.OrderType {
+	case model.OrderTypeLimit, model.OrderTypeStopLimit:
+		return req.LimitValue
+	case model.OrderTypeStop:
+		return req.StopValue
+	case model.OrderTypeMarket:
+		var price float64
+		if req.Direction == model.OrderDirectionBuy {
+			price = listing.Ask
+		} else {
+			price = listing.Price
+		}
+		return &price
+	default:
+		return nil
+	}
+}
+
+func isStopConditionMet(order *model.Order, listing *model.Listing) bool {
+	if order.StopValue == nil {
+		return true
+	}
+
+	switch order.Direction {
+	case model.OrderDirectionBuy:
+		return listing.Ask >= *order.StopValue
+	case model.OrderDirectionSell:
+		return listing.Price <= *order.StopValue
+	default:
+		return false
+	}
+}
+
+func resolveExecutionPrice(order *model.Order, listing *model.Listing) (float64, bool) {
+	switch order.OrderType {
+	case model.OrderTypeMarket, model.OrderTypeStop:
+		if order.Direction == model.OrderDirectionBuy {
+			return listing.Ask, true
+		}
+		return listing.Price, true
+	case model.OrderTypeLimit:
+		return resolveLimitPrice(order.Direction, order.LimitValue, listing)
+	case model.OrderTypeStopLimit:
+		return resolveLimitPrice(order.Direction, order.LimitValue, listing)
+	default:
+		return 0, false
+	}
+}
+
+func resolveLimitPrice(direction model.OrderDirection, limitValue *float64, listing *model.Listing) (float64, bool) {
+	if limitValue == nil {
+		return 0, false
+	}
+
+	switch direction {
+	case model.OrderDirectionBuy:
+		if listing.Ask > *limitValue {
+			return 0, false
+		}
+		return math.Min(*limitValue, listing.Ask), true
+	case model.OrderDirectionSell:
+		if listing.Price < *limitValue {
+			return 0, false
+		}
+		return math.Max(*limitValue, listing.Price), true
+	default:
+		return 0, false
+	}
+}
+
+func calculateCommission(orderType model.OrderType, orderValue float64) float64 {
+	if orderValue <= 0 {
+		return 0
+	}
+
+	switch orderType {
+	case model.OrderTypeMarket, model.OrderTypeStop:
+		return math.Min(0.14*orderValue, 7)
+	case model.OrderTypeLimit, model.OrderTypeStopLimit:
+		return math.Min(0.24*orderValue, 12)
+	default:
+		return 0
+	}
+}
+
+func approximateOrderValue(order *model.Order, fallbackPricePerUnit float64) float64 {
+	pricePerUnit := dereferencePrice(order.PricePerUnit)
+	if pricePerUnit == 0 {
+		pricePerUnit = fallbackPricePerUnit
+	}
+
+	return float64(order.Quantity) * order.ContractSize * pricePerUnit
+}
+
+func dereferencePrice(value *float64) float64 {
+	if value == nil {
+		return 0
+	}
+	return *value
+}
+
+func normalizeCurrencyCode(currency string) string {
+	return strings.ToUpper(strings.TrimSpace(currency))
+}
