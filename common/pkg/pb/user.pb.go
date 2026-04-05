@@ -343,10 +343,6 @@ type ClientResponse struct {
 	FirstName     string                 `protobuf:"bytes,2,opt,name=first_name,json=firstName,proto3" json:"first_name,omitempty"`
 	LastName      string                 `protobuf:"bytes,3,opt,name=last_name,json=lastName,proto3" json:"last_name,omitempty"`
 	Email         string                 `protobuf:"bytes,4,opt,name=email,proto3" json:"email,omitempty"`
-	PhoneNumber   string                 `protobuf:"bytes,5,opt,name=phone_number,json=phoneNumber,proto3" json:"phone_number,omitempty"`
-	Address       string                 `protobuf:"bytes,6,opt,name=address,proto3" json:"address,omitempty"`
-	Username      string                 `protobuf:"bytes,7,opt,name=username,proto3" json:"username,omitempty"`
-	Active        bool                   `protobuf:"varint,8,opt,name=active,proto3" json:"active,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -407,34 +403,6 @@ func (x *ClientResponse) GetEmail() string {
 		return x.Email
 	}
 	return ""
-}
-
-func (x *ClientResponse) GetPhoneNumber() string {
-	if x != nil {
-		return x.PhoneNumber
-	}
-	return ""
-}
-
-func (x *ClientResponse) GetAddress() string {
-	if x != nil {
-		return x.Address
-	}
-	return ""
-}
-
-func (x *ClientResponse) GetUsername() string {
-	if x != nil {
-		return x.Username
-	}
-	return ""
-}
-
-func (x *ClientResponse) GetActive() bool {
-	if x != nil {
-		return x.Active
-	}
-	return false
 }
 
 type GetAllClientsResponse struct {
@@ -587,15 +555,6 @@ type ActuaryResponse struct {
 	FirstName     string                 `protobuf:"bytes,2,opt,name=first_name,json=firstName,proto3" json:"first_name,omitempty"`
 	LastName      string                 `protobuf:"bytes,3,opt,name=last_name,json=lastName,proto3" json:"last_name,omitempty"`
 	Email         string                 `protobuf:"bytes,4,opt,name=email,proto3" json:"email,omitempty"`
-	Username      string                 `protobuf:"bytes,5,opt,name=username,proto3" json:"username,omitempty"`
-	Department    string                 `protobuf:"bytes,6,opt,name=department,proto3" json:"department,omitempty"`
-	PositionId    uint64                 `protobuf:"varint,7,opt,name=position_id,json=positionId,proto3" json:"position_id,omitempty"`
-	Active        bool                   `protobuf:"varint,8,opt,name=active,proto3" json:"active,omitempty"`
-	IsAgent       bool                   `protobuf:"varint,9,opt,name=is_agent,json=isAgent,proto3" json:"is_agent,omitempty"`
-	IsSupervisor  bool                   `protobuf:"varint,10,opt,name=is_supervisor,json=isSupervisor,proto3" json:"is_supervisor,omitempty"`
-	OrderLimit    float64                `protobuf:"fixed64,11,opt,name=order_limit,json=orderLimit,proto3" json:"order_limit,omitempty"`
-	UsedLimit     float64                `protobuf:"fixed64,12,opt,name=used_limit,json=usedLimit,proto3" json:"used_limit,omitempty"`
-	NeedApproval  bool                   `protobuf:"varint,13,opt,name=need_approval,json=needApproval,proto3" json:"need_approval,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -656,69 +615,6 @@ func (x *ActuaryResponse) GetEmail() string {
 		return x.Email
 	}
 	return ""
-}
-
-func (x *ActuaryResponse) GetUsername() string {
-	if x != nil {
-		return x.Username
-	}
-	return ""
-}
-
-func (x *ActuaryResponse) GetDepartment() string {
-	if x != nil {
-		return x.Department
-	}
-	return ""
-}
-
-func (x *ActuaryResponse) GetPositionId() uint64 {
-	if x != nil {
-		return x.PositionId
-	}
-	return 0
-}
-
-func (x *ActuaryResponse) GetActive() bool {
-	if x != nil {
-		return x.Active
-	}
-	return false
-}
-
-func (x *ActuaryResponse) GetIsAgent() bool {
-	if x != nil {
-		return x.IsAgent
-	}
-	return false
-}
-
-func (x *ActuaryResponse) GetIsSupervisor() bool {
-	if x != nil {
-		return x.IsSupervisor
-	}
-	return false
-}
-
-func (x *ActuaryResponse) GetOrderLimit() float64 {
-	if x != nil {
-		return x.OrderLimit
-	}
-	return 0
-}
-
-func (x *ActuaryResponse) GetUsedLimit() float64 {
-	if x != nil {
-		return x.UsedLimit
-	}
-	return 0
-}
-
-func (x *ActuaryResponse) GetNeedApproval() bool {
-	if x != nil {
-		return x.NeedApproval
-	}
-	return false
 }
 
 type GetAllActuariesResponse struct {
@@ -827,17 +723,13 @@ const file_user_proto_rawDesc = "" +
 	"\tpage_size\x18\x02 \x01(\x05R\bpageSize\x12\x1d\n" +
 	"\n" +
 	"first_name\x18\x03 \x01(\tR\tfirstName\x12\x1b\n" +
-	"\tlast_name\x18\x04 \x01(\tR\blastName\"\xe3\x01\n" +
+	"\tlast_name\x18\x04 \x01(\tR\blastName\"r\n" +
 	"\x0eClientResponse\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x1d\n" +
 	"\n" +
 	"first_name\x18\x02 \x01(\tR\tfirstName\x12\x1b\n" +
 	"\tlast_name\x18\x03 \x01(\tR\blastName\x12\x14\n" +
-	"\x05email\x18\x04 \x01(\tR\x05email\x12!\n" +
-	"\fphone_number\x18\x05 \x01(\tR\vphoneNumber\x12\x18\n" +
-	"\aaddress\x18\x06 \x01(\tR\aaddress\x12\x1a\n" +
-	"\busername\x18\a \x01(\tR\busername\x12\x16\n" +
-	"\x06active\x18\b \x01(\bR\x06active\"\xb2\x01\n" +
+	"\x05email\x18\x04 \x01(\tR\x05email\"\xb2\x01\n" +
 	"\x15GetAllClientsResponse\x121\n" +
 	"\aclients\x18\x01 \x03(\v2\x17.user.v1.ClientResponseR\aclients\x12\x14\n" +
 	"\x05total\x18\x02 \x01(\x03R\x05total\x12\x12\n" +
@@ -850,28 +742,13 @@ const file_user_proto_rawDesc = "" +
 	"\tpage_size\x18\x02 \x01(\x05R\bpageSize\x12\x1d\n" +
 	"\n" +
 	"first_name\x18\x03 \x01(\tR\tfirstName\x12\x1b\n" +
-	"\tlast_name\x18\x04 \x01(\tR\blastName\"\x8d\x03\n" +
+	"\tlast_name\x18\x04 \x01(\tR\blastName\"s\n" +
 	"\x0fActuaryResponse\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x1d\n" +
 	"\n" +
 	"first_name\x18\x02 \x01(\tR\tfirstName\x12\x1b\n" +
 	"\tlast_name\x18\x03 \x01(\tR\blastName\x12\x14\n" +
-	"\x05email\x18\x04 \x01(\tR\x05email\x12\x1a\n" +
-	"\busername\x18\x05 \x01(\tR\busername\x12\x1e\n" +
-	"\n" +
-	"department\x18\x06 \x01(\tR\n" +
-	"department\x12\x1f\n" +
-	"\vposition_id\x18\a \x01(\x04R\n" +
-	"positionId\x12\x16\n" +
-	"\x06active\x18\b \x01(\bR\x06active\x12\x19\n" +
-	"\bis_agent\x18\t \x01(\bR\aisAgent\x12#\n" +
-	"\ris_supervisor\x18\n" +
-	" \x01(\bR\fisSupervisor\x12\x1f\n" +
-	"\vorder_limit\x18\v \x01(\x01R\n" +
-	"orderLimit\x12\x1d\n" +
-	"\n" +
-	"used_limit\x18\f \x01(\x01R\tusedLimit\x12#\n" +
-	"\rneed_approval\x18\r \x01(\bR\fneedApproval\"\xb9\x01\n" +
+	"\x05email\x18\x04 \x01(\tR\x05email\"\xb9\x01\n" +
 	"\x17GetAllActuariesResponse\x126\n" +
 	"\tactuaries\x18\x01 \x03(\v2\x18.user.v1.ActuaryResponseR\tactuaries\x12\x14\n" +
 	"\x05total\x18\x02 \x01(\x03R\x05total\x12\x12\n" +

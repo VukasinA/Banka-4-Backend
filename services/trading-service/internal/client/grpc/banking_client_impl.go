@@ -3,7 +3,6 @@ package grpc
 import (
 	"context"
 	"fmt"
-	"log"
 
 	"github.com/RAF-SI-2025/Banka-4-Backend/common/pkg/pb"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/client"
@@ -30,7 +29,6 @@ func (c *BankingServiceClient) GetAccountByNumber(ctx context.Context, accountNu
 }
 
 func (c *BankingServiceClient) CreatePaymentWithoutVerification(ctx context.Context, req *pb.CreatePaymentRequest) (*pb.CreatePaymentResponse, error) {
-	log.Default().Print(req.PayerAccountNumber, req.RecipientAccountNumber)
 	resp, err := c.stub.CreatePaymentWithoutVerification(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("banking client CreatePayment: %w", err)

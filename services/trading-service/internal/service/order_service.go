@@ -20,16 +20,16 @@ type OrderService struct {
 	orderRepo     repository.OrderRepository
 	exchangeRepo  repository.ExchangeRepository
 	listingRepo   repository.ListingRepository
-	userClient    client.UserServiceClient // ← changed
-	bankingClient client.BankingClient     // ← changed
+	userClient    client.UserServiceClient
+	bankingClient client.BankingClient
 }
 
 func NewOrderService(
 	orderRepo repository.OrderRepository,
 	exchangeRepo repository.ExchangeRepository,
 	listingRepo repository.ListingRepository,
-	userClient client.UserServiceClient, // ← changed
-	bankingClient client.BankingClient, // ← changed
+	userClient client.UserServiceClient,
+	bankingClient client.BankingClient,
 ) *OrderService {
 	return &OrderService{
 		orderRepo:     orderRepo,

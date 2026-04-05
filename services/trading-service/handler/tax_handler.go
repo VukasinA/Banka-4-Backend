@@ -1,11 +1,12 @@
 package handler
 
 import (
+	"math"
 	"net/http"
-	"strings"
 
 	"github.com/RAF-SI-2025/Banka-4-Backend/common/pkg/errors"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/client"
+	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/dto"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/service"
 	"github.com/gin-gonic/gin"
 )
@@ -19,28 +20,41 @@ func NewTaxHandler(taxService *service.TaxService, userClient client.UserService
 	return &TaxHandler{taxService: taxService, userClient: userClient}
 }
 
-type UserTaxEntry struct {
-	ID         uint64  `json:"id"`
-	FirstName  string  `json:"firstName"`
-	LastName   string  `json:"lastName"`
-	Email      string  `json:"email"`
-	UserType   string  `json:"userType"`
-	TaxOwedRSD float64 `json:"taxOwedRsd"`
-}
-
+// ListTaxUsers godoc
+// @Summary List users with tax information
+// @Description Returns a paginated list of clients and/or actuaries with their total tax owed in RSD. Filterable by user type, first name, and last name.
+// @Tags tax
+// @Produce json
+// @Param userType query string false "Filter by user type (client, actuary)"
+// @Param first_name query string false "Filter by first name"
+// @Param last_name query string false "Filter by last name"
+// @Param page query int false "Page number" minimum(1)
+// @Param page_size query int false "Page size" minimum(1) maximum(100)
+// @Success 200 {object} response.ListTaxUsersResponse
+// @Failure 400 {object} errors.AppError
+// @Failure 401 {object} errors.AppError
+// @Failure 403 {object} errors.AppError
+// @Security BearerAuth
+// @Router /api/tax/users [get]
 func (h *TaxHandler) ListTaxUsers(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	userTypeFilter := c.Query("userType")
-	firstNameFilter := c.Query("first_name")
-	lastNameFilter := c.Query("last_name")
-	page := int32(1)
-	pageSize := int32(100)
+	var req dto.ListTaxUsersRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		_ = c.Error(errors.BadRequestErr(err.Error()))
+		return
+	}
+	if req.Page < 1 {
+		req.Page = 1
+	}
+	if req.PageSize < 1 {
+		req.PageSize = 10
+	}
 
-	var entries []UserTaxEntry
+	var entries []dto.UserTaxEntry
 
-	if userTypeFilter == "" || userTypeFilter == "client" {
-		clientsResp, err := h.userClient.GetAllClients(ctx, page, pageSize, firstNameFilter, lastNameFilter)
+	if req.UserType == "" || req.UserType == "client" {
+		clientsResp, err := h.userClient.GetAllClients(ctx, req.Page, req.PageSize, req.FirstName, req.LastName)
 		if err != nil {
 			_ = c.Error(errors.InternalErr(err))
 			return
@@ -51,7 +65,7 @@ func (h *TaxHandler) ListTaxUsers(c *gin.Context) {
 				_ = c.Error(err)
 				return
 			}
-			entries = append(entries, UserTaxEntry{
+			entries = append(entries, dto.UserTaxEntry{
 				ID:         cl.Id,
 				FirstName:  cl.FirstName,
 				LastName:   cl.LastName,
@@ -62,8 +76,8 @@ func (h *TaxHandler) ListTaxUsers(c *gin.Context) {
 		}
 	}
 
-	if userTypeFilter == "" || userTypeFilter == "actuary" {
-		actuariesResp, err := h.userClient.GetAllActuaries(ctx, page, pageSize, firstNameFilter, lastNameFilter)
+	if req.UserType == "" || req.UserType == "actuary" {
+		actuariesResp, err := h.userClient.GetAllActuaries(ctx, req.Page, req.PageSize, req.FirstName, req.LastName)
 		if err != nil {
 			_ = c.Error(errors.InternalErr(err))
 			return
@@ -74,7 +88,7 @@ func (h *TaxHandler) ListTaxUsers(c *gin.Context) {
 				_ = c.Error(err)
 				return
 			}
-			entries = append(entries, UserTaxEntry{
+			entries = append(entries, dto.UserTaxEntry{
 				ID:         act.Id,
 				FirstName:  act.FirstName,
 				LastName:   act.LastName,
@@ -86,12 +100,31 @@ func (h *TaxHandler) ListTaxUsers(c *gin.Context) {
 	}
 
 	if entries == nil {
-		entries = []UserTaxEntry{}
+		entries = []dto.UserTaxEntry{}
 	}
 
-	c.JSON(http.StatusOK, entries)
+	total := int64(len(entries))
+	totalPages := int32(math.Ceil(float64(total) / float64(req.PageSize)))
+
+	c.JSON(http.StatusOK, dto.ListTaxUsersResponse{
+		Data:       entries,
+		Total:      total,
+		Page:       req.Page,
+		PageSize:   req.PageSize,
+		TotalPages: totalPages,
+	})
 }
 
+// CollectTaxes godoc
+// @Summary Trigger tax collection
+// @Description Runs the tax collection process for all users. Restricted to authorized personnel.
+// @Tags tax
+// @Produce json
+// @Success 200 {object} response.CollectTaxesResponse
+// @Failure 401 {object} errors.AppError
+// @Failure 403 {object} errors.AppError
+// @Security BearerAuth
+// @Router /api/tax/collect [post]
 func (h *TaxHandler) CollectTaxes(c *gin.Context) {
 	ctx := c.Request.Context()
 
@@ -100,11 +133,5 @@ func (h *TaxHandler) CollectTaxes(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Tax collection completed"})
-}
-
-func nameMatches(firstName, lastName, query string) bool {
-	q := strings.ToLower(query)
-	return strings.Contains(strings.ToLower(firstName), q) ||
-		strings.Contains(strings.ToLower(lastName), q)
+	c.JSON(http.StatusOK, dto.CollectTaxesResponse{Message: "Tax collection completed"})
 }

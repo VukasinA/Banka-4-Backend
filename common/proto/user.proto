@@ -45,10 +45,6 @@ message ClientResponse {
   string first_name   = 2;
   string last_name    = 3;
   string email        = 4;
-  string phone_number = 5;
-  string address      = 6;
-  string username     = 7;
-  bool   active       = 8;
 }
 
 message GetAllClientsResponse {
@@ -72,15 +68,7 @@ message ActuaryResponse {
   string first_name    = 2;
   string last_name     = 3;
   string email         = 4;
-  string username      = 5;
-  string department    = 6;
-  uint64 position_id   = 7;
-  bool   active        = 8;
-  bool   is_agent      = 9;
-  bool   is_supervisor = 10;
-  double order_limit   = 11;
-  double used_limit    = 12;
-  bool   need_approval = 13;
+
 }
 
 message GetAllActuariesResponse {
