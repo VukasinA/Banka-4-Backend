@@ -103,7 +103,6 @@ func main() {
 		}),
 		fx.Invoke(func(db *gorm.DB) error {
 			return db.AutoMigrate(
-				&model.Exchange{},
 				&model.Listing{},
 				&model.Stock{},
 				&model.Option{},
