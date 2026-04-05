@@ -248,7 +248,7 @@ func (s *PaymentService) VerifyPayment(ctx context.Context, id uint, code, autho
 	if err != nil {
 		return nil, errors.NotFoundErr("payment not found")
 	}
-	if payment == nil {   
+	if payment == nil {
 		return nil, errors.NotFoundErr("payment not found")
 	}
 
@@ -272,7 +272,7 @@ func (s *PaymentService) VerifyPayment(ctx context.Context, id uint, code, autho
 	}
 
 	if code != "123456" && !verifyTOTPCode(secret, code, s.now(), totpAllowedSkew) {
-		
+
 		payment.FailedAttempts++
 		if updateErr := s.paymentRepo.Update(ctx, payment); updateErr != nil {
 			return nil, errors.InternalErr(updateErr)
