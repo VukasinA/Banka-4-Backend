@@ -110,13 +110,17 @@ func SetupRoutes(r *gin.Engine, healthHandler *handler.HealthHandler, taxHandler
 
 		client := api.Group("/client")
 		client.Use(authMw, auth.RequireClientSelf("clientId", true))
-		client.GET("/:clientId/assets", portfolioHandler.GetClientPortfolio)
-		client.GET("/:clientId/accumulated-tax", taxHandler.GetClientAccumulatedTax)
+		{
+			client.GET("/:clientId/assets", portfolioHandler.GetClientPortfolio)
+			client.GET("/:clientId/accumulated-tax", taxHandler.GetClientAccumulatedTax)
+		}
 
 		actuary := api.Group("/actuary")
 		actuary.Use(authMw, auth.RequireIdentityType(auth.IdentityEmployee))
-		actuary.GET("/:actId/assets", portfolioHandler.GetActuaryPortfolio)
-		actuary.GET("/:actId/accumulated-tax", taxHandler.GetActuaryAccumulatedTax)
+		{
+			actuary.GET("/:actId/assets", portfolioHandler.GetActuaryPortfolio)
+			actuary.GET("/:actId/accumulated-tax", taxHandler.GetActuaryAccumulatedTax)
+		}
 
 		orders := api.Group("/orders")
 		orders.Use(auth.Middleware(verifier, permProvider))

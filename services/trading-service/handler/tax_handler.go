@@ -139,7 +139,7 @@ func (h *TaxHandler) CollectTaxes(c *gin.Context) {
 
 // GetClientAccumulatedTax godoc
 // @Summary Get accumulated tax for a client
-// @Description Returns the total accumulated tax (paid + unpaid) for a specific client across all their accounts in RSD.
+// @Description Returns the total accumulated tax for a specific client across all their accounts in RSD.
 // @Tags tax
 // @Produce json
 // @Param clientId path int true "Client ID"
@@ -171,7 +171,7 @@ func (h *TaxHandler) GetClientAccumulatedTax(c *gin.Context) {
 
 // GetActuaryAccumulatedTax godoc
 // @Summary Get accumulated tax for an actuary
-// @Description Returns the total accumulated tax (paid + unpaid) for a specific actuary (employee) across all accounts in RSD.
+// @Description Returns the total accumulated tax for a specific actuary (employee) across all accounts in RSD.
 // @Tags tax
 // @Produce json
 // @Param actId path int true "Actuary ID"
