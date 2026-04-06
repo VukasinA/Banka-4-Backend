@@ -15,6 +15,7 @@ import (
 	"github.com/RAF-SI-2025/Banka-4-Backend/common/pkg/auth"
 	"github.com/RAF-SI-2025/Banka-4-Backend/common/pkg/errors"
 	"github.com/RAF-SI-2025/Banka-4-Backend/common/pkg/pb"
+	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/client"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/dto"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/model"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/repository"
@@ -51,8 +52,8 @@ type OrderService struct {
 	exchangeRepo         repository.ExchangeRepository
 	listingRepo          repository.ListingRepository
 	assetOwnershipRepo   repository.AssetOwnershipRepository
-	userClient           pb.UserServiceClient
-	bankingClient        pb.BankingServiceClient
+	userClient           client.UserServiceClient
+	bankingClient        client.BankingClient
 
 	now func() time.Time
 	rng *rand.Rand
@@ -67,8 +68,8 @@ func NewOrderService(
 	exchangeRepo repository.ExchangeRepository,
 	listingRepo repository.ListingRepository,
 	assetOwnershipRepo repository.AssetOwnershipRepository,
-	userClient pb.UserServiceClient,
-	bankingClient pb.BankingServiceClient,
+	userClient client.UserServiceClient,
+	bankingClient client.BankingClient,
 ) *OrderService {
 	return &OrderService{
 		orderRepo:            orderRepo,
@@ -507,9 +508,7 @@ func (s *OrderService) resolveOrderStatus(ctx context.Context, authCtx *auth.Aut
 		return model.OrderStatusPending
 	}
 
-	resp, err := s.userClient.GetEmployeeById(ctx, &pb.GetEmployeeByIdRequest{
-		Id: uint64(*authCtx.EmployeeID),
-	})
+	resp, err := s.userClient.GetEmployeeById(ctx, uint64(*authCtx.EmployeeID))
 	if err != nil {
 		return model.OrderStatusPending
 	}
@@ -529,9 +528,7 @@ func (s *OrderService) resolveOrderStatus(ctx context.Context, authCtx *auth.Aut
 }
 
 func (s *OrderService) validateAccount(ctx context.Context, accountNumber string, authCtx *auth.AuthContext) error {
-	account, err := s.bankingClient.GetAccountByNumber(ctx, &pb.GetAccountByNumberRequest{
-		AccountNumber: accountNumber,
-	})
+	account, err := s.bankingClient.GetAccountByNumber(ctx, accountNumber)
 	if err != nil {
 		st, ok := status.FromError(err)
 		if ok && st.Code() == codes.NotFound {
@@ -559,9 +556,7 @@ func (s *OrderService) checkSupervisor(ctx context.Context) (bool, error) {
 		return false, nil
 	}
 
-	resp, err := s.userClient.GetEmployeeById(ctx, &pb.GetEmployeeByIdRequest{
-		Id: uint64(*authCtx.EmployeeID),
-	})
+	resp, err := s.userClient.GetEmployeeById(ctx, uint64(*authCtx.EmployeeID))
 	if err != nil {
 		return false, errors.InternalErr(err)
 	}
@@ -689,12 +684,12 @@ func (s *OrderService) executeTradeSettlement(ctx context.Context, order *model.
 		direction = pb.TradeSettlementDirection_TRADE_SETTLEMENT_DIRECTION_SELL
 	}
 
-	resp, err := s.bankingClient.ExecuteTradeSettlement(ctx, &pb.ExecuteTradeSettlementRequest{
-		AccountNumber:     order.AccountNumber,
-		TradeCurrencyCode: tradeCurrency,
-		Direction:         direction,
-		Amount:            amount,
-	})
+	resp, err := s.bankingClient.ExecuteTradeSettlement(ctx,
+		order.AccountNumber,
+		tradeCurrency,
+		direction,
+		amount,
+	)
 	if err != nil {
 		return nil, err
 	}

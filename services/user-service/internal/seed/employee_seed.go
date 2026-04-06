@@ -14,7 +14,13 @@ import (
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/user-service/internal/model"
 )
 
-var positions = []string{"Manager", "Developer", "HR"}
+var positions = []string{
+	"Manager",
+	"Developer",
+	"HR",
+	"Accountant",
+	"QA",
+}
 
 var employees = []struct {
 	FirstName   string
@@ -33,6 +39,9 @@ var employees = []struct {
 	{"Dimitrije", "Mijailovic", "M", "1985-05-01", "dimitrije@raf.rs", "123456789", "Street 1", "dimitrije", "pass123", true, "IT", "Developer"},
 	{"Petar", "Petrovic", "M", "1990-08-12", "petar@raf.rs", "987654321", "Street 2", "petar", "pass123", true, "HR", "HR"},
 	{"Admin", "Admin", "M", "1980-01-01", "admin@raf.rs", "000000000", "RAF", "admin", "admin123", true, "IT", "Manager"},
+	{"Marko", "Markovic", "M", "1992-03-15", "marko@raf.rs", "111222333", "Street 3", "marko", "pass123", true, "IT", "Developer"},
+	{"Jelena", "Jovanovic", "F", "1988-07-22", "jelena@raf.rs", "444555666", "Street 4", "jelena", "pass123", true, "Finance", "Accountant"},
+	{"Nikola", "Nikolic", "M", "1995-11-30", "nikola@raf.rs", "777888999", "Street 5", "nikola", "pass123", true, "IT", "QA"},
 	{"Admin", "Novi", "M", "1980-01-01", "adminnovi@raf.rs", "000000001", "RAF", "adminnovi", "admin123", true, "IT", "Manager"},
 }
 
@@ -51,20 +60,23 @@ var activatableClients = []struct {
 }
 
 var clients = []struct {
-	FirstName   string
-	LastName    string
-	Gender      string
-	DateOfBirth string
-	Email       string
-	Username    string
-	PhoneNumber string
-	Address     string
-	Password    string
+	FirstName                string
+	LastName                 string
+	Gender                   string
+	DateOfBirth              string
+	Email                    string
+	Username                 string
+	PhoneNumber              string
+	Address                  string
+	Password                 string
+	MobileVerificationSecret string
 }{
-	{"Banka", "Četiri", "M", "1992-03-15", "banka4@raf.rs", "banka4", "+381600000000", "Bankarska ulica 1, Beograd", "Banka123"},
-	{"Marko", "Markovic", "M", "1992-03-15", "marko.markovic@example.com", "marko.markovic", "+381601234567", "Knez Mihailova 10, Beograd", "password123"},
-	{"Ana", "Anic", "F", "1995-07-22", "ana.anic@example.com", "ana.anic", "+381609876543", "Bulevar Oslobodjenja 20, Novi Sad", "password123"},
-	{"Stefan", "Stefanovic", "M", "1988-11-30", "stefan.stefanovic@example.com", "stefan.stefanovic", "+381611112222", "Trg Republike 5, Beograd", "password123"},
+	{"Banka", "Četiri", "M", "1992-03-15", "banka4@raf.rs", "banka4", "+381600000000", "Bankarska ulica 1, Beograd", "Banka123", "AAAAAAAAAAAAAAAAAAAA"},
+	{"Marko", "Markovic", "M", "1992-03-15", "marko.markovic@example.com", "marko.markovic", "+381601234567", "Knez Mihailova 10, Beograd", "password123", "AAAAAAAAAAAAAAAAAAAA"},
+	{"Ana", "Anic", "F", "1995-07-22", "ana.anic@example.com", "ana.anic", "+381609876543", "Bulevar Oslobodjenja 20, Novi Sad", "password123", "AAAAAAAAAAAAAAAAAAAA"},
+	{"Stefan", "Stefanovic", "M", "1988-11-30", "stefan.stefanovic@example.com", "stefan.stefanovic", "+381611112222", "Trg Republike 5, Beograd", "password123", "AAAAAAAAAAAAAAAAAAAA"},
+	{"Mirko", "Mirkovic", "F", "1995-07-22", "mirko.mirkovic@example.com", "mirko.mirkovic", "+381609876543", "Bulevar Oslobodjenja 20, Novi Sad", "password123", "AAAAAAAAAAAAAAAAAAAA"},
+	{"Sekretar", "Drzavne Kase", "M", "1995-07-22", "sekretar@gov.rs", "drzavna.kasa", "+381604555888", "Beograd", "kasa123", "AAAAAAAAAAAAAAAAAAAA"},
 }
 
 func Run(db *gorm.DB) error {
@@ -156,13 +168,14 @@ func Run(db *gorm.DB) error {
 		}
 
 		client := model.Client{
-			IdentityID:  identity.ID,
-			FirstName:   c.FirstName,
-			LastName:    c.LastName,
-			Gender:      c.Gender,
-			DateOfBirth: dob,
-			PhoneNumber: c.PhoneNumber,
-			Address:     c.Address,
+			IdentityID:               identity.ID,
+			FirstName:                c.FirstName,
+			LastName:                 c.LastName,
+			Gender:                   c.Gender,
+			DateOfBirth:              dob,
+			PhoneNumber:              c.PhoneNumber,
+			Address:                  c.Address,
+			MobileVerificationSecret: c.MobileVerificationSecret,
 		}
 		if err := db.Create(&client).Error; err != nil {
 			return err
@@ -294,5 +307,51 @@ func Run(db *gorm.DB) error {
 
 	}
 
+	agentEmails := []string{
+		"marko@raf.rs",
+		"jelena@raf.rs",
+		"nikola@raf.rs",
+	}
+
+	for _, email := range agentEmails {
+		var identity model.Identity
+		if err := db.Where("email = ?", email).First(&identity).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				continue
+			}
+			return err
+		}
+
+		var employee model.Employee
+		err := db.Where("identity_id = ?", identity.ID).First(&employee).Error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			continue
+		} else if err != nil {
+			return err
+		}
+
+		var existing model.ActuaryInfo
+		err = db.Where("employee_id = ?", employee.EmployeeID).First(&existing).Error
+
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			actuary := model.ActuaryInfo{
+				EmployeeID:   employee.EmployeeID,
+				IsAgent:      true,
+				IsSupervisor: false,
+				Limit:        100000,
+			}
+			if err := db.Create(&actuary).Error; err != nil {
+				return err
+			}
+		} else if err != nil {
+			return err
+		} else {
+			existing.IsAgent = true
+			existing.IsSupervisor = false
+			if err := db.Save(&existing).Error; err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
