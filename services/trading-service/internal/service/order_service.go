@@ -225,9 +225,11 @@ func (s *OrderService) resolveContractSize(ctx context.Context, listing *model.L
 	case model.AssetTypeOption:
 		options, err := s.optionRepo.FindByAssetIDs(ctx, []uint{listing.AssetID})
 		if err != nil || len(options) == 0 {
-			return 1
+			return 100
 		}
 		return float64(options[0].ContractSize)
+	case model.AssetTypeForexPair:
+		return 1000
 	default:
 		return 1
 	}
