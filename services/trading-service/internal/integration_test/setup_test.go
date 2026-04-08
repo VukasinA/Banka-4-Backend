@@ -147,6 +147,10 @@ func (f *fakeBankingClient) GetAccountByNumber(_ context.Context, accountNumber 
 	}, nil
 }
 
+func (f *fakeBankingClient) HasActiveLoan(_ context.Context, _ uint64) (*pb.HasActiveLoanResponse, error) {
+	return &pb.HasActiveLoanResponse{HasActiveLoan: true}, nil
+}
+
 func (f *fakeBankingClient) CreatePaymentWithoutVerification(_ context.Context, _ *pb.CreatePaymentRequest) (*pb.CreatePaymentResponse, error) {
 	return &pb.CreatePaymentResponse{PaymentId: 1}, nil
 }
