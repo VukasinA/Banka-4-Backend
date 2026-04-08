@@ -252,7 +252,7 @@ func newTestOrderService(
 	userClient *fakeUserServiceClient,
 	bankingClient *fakeOrderBankingClient,
 ) *OrderService {
-	svc := NewOrderService(orderRepo, orderTxRepo, exchangeRepo, listingRepo, &fakeAssetOwnershipRepo{}, userClient, bankingClient)
+	svc := NewOrderService(orderRepo, orderTxRepo, exchangeRepo, listingRepo, &fakeAssetOwnershipRepo{}, &fakeFuturesRepo{}, &fakeOptionRepo{}, userClient, bankingClient)
 	svc.now = func() time.Time {
 		// Wednesday 10:00 UTC  (market hours for a UTC-0 exchange open 09:00-16:00)
 		return time.Date(2025, 6, 4, 10, 0, 0, 0, time.UTC)
