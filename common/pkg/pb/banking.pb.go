@@ -190,6 +190,94 @@ func (x *GetAccountByNumberResponse) GetAvailableBalance() float64 {
 	return 0
 }
 
+type HasActiveLoanRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ClientId      uint64                 `protobuf:"varint,1,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *HasActiveLoanRequest) Reset() {
+	*x = HasActiveLoanRequest{}
+	mi := &file_common_proto_banking_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HasActiveLoanRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HasActiveLoanRequest) ProtoMessage() {}
+
+func (x *HasActiveLoanRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_common_proto_banking_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use HasActiveLoanRequest.ProtoReflect.Descriptor instead.
+func (*HasActiveLoanRequest) Descriptor() ([]byte, []int) {
+	return file_common_proto_banking_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *HasActiveLoanRequest) GetClientId() uint64 {
+	if x != nil {
+		return x.ClientId
+	}
+	return 0
+}
+
+type HasActiveLoanResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	HasActiveLoan bool                   `protobuf:"varint,1,opt,name=has_active_loan,json=hasActiveLoan,proto3" json:"has_active_loan,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *HasActiveLoanResponse) Reset() {
+	*x = HasActiveLoanResponse{}
+	mi := &file_common_proto_banking_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HasActiveLoanResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HasActiveLoanResponse) ProtoMessage() {}
+
+func (x *HasActiveLoanResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_common_proto_banking_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use HasActiveLoanResponse.ProtoReflect.Descriptor instead.
+func (*HasActiveLoanResponse) Descriptor() ([]byte, []int) {
+	return file_common_proto_banking_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *HasActiveLoanResponse) GetHasActiveLoan() bool {
+	if x != nil {
+		return x.HasActiveLoan
+	}
+	return false
+}
+
 type CreatePaymentRequest struct {
 	state                  protoimpl.MessageState `protogen:"open.v1"`
 	PayerAccountNumber     string                 `protobuf:"bytes,1,opt,name=payer_account_number,json=payerAccountNumber,proto3" json:"payer_account_number,omitempty"`
@@ -743,7 +831,11 @@ const file_banking_proto_rawDesc = "" +
 	"\tclient_id\x18\x02 \x01(\x04R\bclientId\x12!\n" +
 	"\faccount_type\x18\x03 \x01(\tR\vaccountType\x12#\n" +
 	"\rcurrency_code\x18\x04 \x01(\tR\fcurrencyCode\x12+\n" +
-	"\x11available_balance\x18\x05 \x01(\x01R\x10availableBalance\"\xa9\x02\n" +
+	"\x11available_balance\x18\x05 \x01(\x01R\x10availableBalance\"3\n" +
+	"\x14HasActiveLoanRequest\x12\x1b\n" +
+	"\tclient_id\x18\x01 \x01(\x04R\bclientId\"?\n" +
+	"\x15HasActiveLoanResponse\x12&\n" +
+	"\x0fhas_active_loan\x18\x01 \x01(\bR\rhasActiveLoan\"\xa9\x02\n" +
 	"\x14CreatePaymentRequest\x120\n" +
 	"\x14payer_account_number\x18\x01 \x01(\tR\x12payerAccountNumber\x128\n" +
 	"\x18recipient_account_number\x18\x02 \x01(\tR\x16recipientAccountNumber\x12%\n" +
@@ -784,9 +876,10 @@ const file_banking_proto_rawDesc = "" +
 	"\x18TradeSettlementDirection\x12*\n" +
 	"&TRADE_SETTLEMENT_DIRECTION_UNSPECIFIED\x10\x00\x12\"\n" +
 	"\x1eTRADE_SETTLEMENT_DIRECTION_BUY\x10\x01\x12#\n" +
-	"\x1fTRADE_SETTLEMENT_DIRECTION_SELL\x10\x022\x99\x04\n" +
+	"\x1fTRADE_SETTLEMENT_DIRECTION_SELL\x10\x022\xef\x04\n" +
 	"\x0eBankingService\x12c\n" +
-	"\x12GetAccountByNumber\x12%.banking.v1.GetAccountByNumberRequest\x1a&.banking.v1.GetAccountByNumberResponse\x12g\n" +
+	"\x12GetAccountByNumber\x12%.banking.v1.GetAccountByNumberRequest\x1a&.banking.v1.GetAccountByNumberResponse\x12T\n" +
+	"\rHasActiveLoan\x12 .banking.v1.HasActiveLoanRequest\x1a!.banking.v1.HasActiveLoanResponse\x12g\n" +
 	" CreatePaymentWithoutVerification\x12 .banking.v1.CreatePaymentRequest\x1a!.banking.v1.CreatePaymentResponse\x12l\n" +
 	"\x15GetAccountsByClientID\x12(.banking.v1.GetAccountsByClientIDRequest\x1a).banking.v1.GetAccountsByClientIDResponse\x12Z\n" +
 	"\x0fConvertCurrency\x12\".banking.v1.ConvertCurrencyRequest\x1a#.banking.v1.ConvertCurrencyResponse\x12o\n" +
@@ -810,31 +903,35 @@ var file_banking_proto_goTypes = []any{
 	(TradeSettlementDirection)(0),          // 0: banking.v1.TradeSettlementDirection
 	(*GetAccountByNumberRequest)(nil),      // 1: banking.v1.GetAccountByNumberRequest
 	(*GetAccountByNumberResponse)(nil),     // 2: banking.v1.GetAccountByNumberResponse
-	(*CreatePaymentRequest)(nil),           // 3: banking.v1.CreatePaymentRequest
-	(*CreatePaymentResponse)(nil),          // 4: banking.v1.CreatePaymentResponse
-	(*GetAccountsByClientIDRequest)(nil),   // 5: banking.v1.GetAccountsByClientIDRequest
-	(*GetAccountsByClientIDResponse)(nil),  // 6: banking.v1.GetAccountsByClientIDResponse
-	(*AccountInfo)(nil),                    // 7: banking.v1.AccountInfo
-	(*ConvertCurrencyRequest)(nil),         // 8: banking.v1.ConvertCurrencyRequest
-	(*ConvertCurrencyResponse)(nil),        // 9: banking.v1.ConvertCurrencyResponse
-	(*ExecuteTradeSettlementRequest)(nil),  // 10: banking.v1.ExecuteTradeSettlementRequest
-	(*ExecuteTradeSettlementResponse)(nil), // 11: banking.v1.ExecuteTradeSettlementResponse
+	(*HasActiveLoanRequest)(nil),           // 3: banking.v1.HasActiveLoanRequest
+	(*HasActiveLoanResponse)(nil),          // 4: banking.v1.HasActiveLoanResponse
+	(*CreatePaymentRequest)(nil),           // 5: banking.v1.CreatePaymentRequest
+	(*CreatePaymentResponse)(nil),          // 6: banking.v1.CreatePaymentResponse
+	(*GetAccountsByClientIDRequest)(nil),   // 7: banking.v1.GetAccountsByClientIDRequest
+	(*GetAccountsByClientIDResponse)(nil),  // 8: banking.v1.GetAccountsByClientIDResponse
+	(*AccountInfo)(nil),                    // 9: banking.v1.AccountInfo
+	(*ConvertCurrencyRequest)(nil),         // 10: banking.v1.ConvertCurrencyRequest
+	(*ConvertCurrencyResponse)(nil),        // 11: banking.v1.ConvertCurrencyResponse
+	(*ExecuteTradeSettlementRequest)(nil),  // 12: banking.v1.ExecuteTradeSettlementRequest
+	(*ExecuteTradeSettlementResponse)(nil), // 13: banking.v1.ExecuteTradeSettlementResponse
 }
 var file_banking_proto_depIdxs = []int32{
 	7,  // 0: banking.v1.GetAccountsByClientIDResponse.accounts:type_name -> banking.v1.AccountInfo
 	0,  // 1: banking.v1.ExecuteTradeSettlementRequest.direction:type_name -> banking.v1.TradeSettlementDirection
 	1,  // 2: banking.v1.BankingService.GetAccountByNumber:input_type -> banking.v1.GetAccountByNumberRequest
-	3,  // 3: banking.v1.BankingService.CreatePaymentWithoutVerification:input_type -> banking.v1.CreatePaymentRequest
-	5,  // 4: banking.v1.BankingService.GetAccountsByClientID:input_type -> banking.v1.GetAccountsByClientIDRequest
-	8,  // 5: banking.v1.BankingService.ConvertCurrency:input_type -> banking.v1.ConvertCurrencyRequest
-	10, // 6: banking.v1.BankingService.ExecuteTradeSettlement:input_type -> banking.v1.ExecuteTradeSettlementRequest
-	2,  // 7: banking.v1.BankingService.GetAccountByNumber:output_type -> banking.v1.GetAccountByNumberResponse
-	4,  // 8: banking.v1.BankingService.CreatePaymentWithoutVerification:output_type -> banking.v1.CreatePaymentResponse
-	6,  // 9: banking.v1.BankingService.GetAccountsByClientID:output_type -> banking.v1.GetAccountsByClientIDResponse
-	9,  // 10: banking.v1.BankingService.ConvertCurrency:output_type -> banking.v1.ConvertCurrencyResponse
-	11, // 11: banking.v1.BankingService.ExecuteTradeSettlement:output_type -> banking.v1.ExecuteTradeSettlementResponse
-	7,  // [7:12] is the sub-list for method output_type
-	2,  // [2:7] is the sub-list for method input_type
+	3,  // 3: banking.v1.BankingService.HasActiveLoan:input_type -> banking.v1.HasActiveLoanRequest
+	5,  // 4: banking.v1.BankingService.CreatePaymentWithoutVerification:input_type -> banking.v1.CreatePaymentRequest
+	7,  // 5: banking.v1.BankingService.GetAccountsByClientID:input_type -> banking.v1.GetAccountsByClientIDRequest
+	10, // 6: banking.v1.BankingService.ConvertCurrency:input_type -> banking.v1.ConvertCurrencyRequest
+	12, // 7: banking.v1.BankingService.ExecuteTradeSettlement:input_type -> banking.v1.ExecuteTradeSettlementRequest
+	2,  // 8: banking.v1.BankingService.GetAccountByNumber:output_type -> banking.v1.GetAccountByNumberResponse
+	4,  // 9: banking.v1.BankingService.HasActiveLoan:output_type -> banking.v1.HasActiveLoanResponse
+	6,  // 10: banking.v1.BankingService.CreatePaymentWithoutVerification:output_type -> banking.v1.CreatePaymentResponse
+	8,  // 11: banking.v1.BankingService.GetAccountsByClientID:output_type -> banking.v1.GetAccountsByClientIDResponse
+	11, // 12: banking.v1.BankingService.ConvertCurrency:output_type -> banking.v1.ConvertCurrencyResponse
+	13, // 13: banking.v1.BankingService.ExecuteTradeSettlement:output_type -> banking.v1.ExecuteTradeSettlementResponse
+	8,  // [8:14] is the sub-list for method output_type
+	2,  // [2:8] is the sub-list for method input_type
 	2,  // [2:2] is the sub-list for extension type_name
 	2,  // [2:2] is the sub-list for extension extendee
 	0,  // [0:2] is the sub-list for field type_name
@@ -851,7 +948,7 @@ func file_banking_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_banking_proto_rawDesc), len(file_banking_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   11,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
