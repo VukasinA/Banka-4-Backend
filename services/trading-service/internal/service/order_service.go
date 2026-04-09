@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"math"
 	"math/rand"
@@ -133,6 +134,15 @@ func (s *OrderService) Stop() {
 
 func (s *OrderService) GetOrders(ctx context.Context, query dto.ListOrdersQuery) ([]model.Order, int64, error) {
 	orders, total, err := s.orderRepo.FindAll(ctx, query.Page, query.PageSize, nil, query.Status, query.Direction, query.IsDone)
+	if err != nil {
+		return nil, 0, errors.InternalErr(err)
+	}
+
+	return orders, total, nil
+}
+
+func (s *OrderService) GetOrdersForUser(ctx context.Context, userID uint, query dto.ListOrdersQuery) ([]model.Order, int64, error) {
+	orders, total, err := s.orderRepo.FindAll(ctx, query.Page, query.PageSize, &userID, query.Status, query.Direction, query.IsDone)
 	if err != nil {
 		return nil, 0, errors.InternalErr(err)
 	}
@@ -505,7 +515,7 @@ func (s *OrderService) processOrder(ctx context.Context, order *model.Order) err
 
 func (s *OrderService) updateAssetOwnership(ctx context.Context, order *model.Order, fillQty uint, pricePerUnit float64, currency string) error {
 	if order.Listing.Asset == nil {
-		return nil
+		return fmt.Errorf("listing %d has no asset", order.ListingID)
 	}
 
 	fillAmount := float64(fillQty) * order.ContractSize
@@ -554,6 +564,7 @@ func (s *OrderService) updateAssetOwnership(ctx context.Context, order *model.Or
 	}
 
 	ownership.UpdatedAt = s.now()
+	log.Printf("Updating asset ownership: %+v", ownership)
 	return s.assetOwnershipRepo.Upsert(ctx, ownership)
 }
 

@@ -79,3 +79,72 @@ func ToOrderResponseList(orders []model.Order) []OrderResponse {
 	}
 	return result
 }
+
+type OrderWithExecutionResponse struct {
+	OrderID              uint                 `json:"order_id"`
+	UserID               uint                 `json:"user_id"`
+	AccountNumber        string               `json:"account_number"`
+	ListingID            uint                 `json:"listing_id"`
+	Ticker               string               `json:"ticker"`
+	ListingName          string               `json:"listing_name"`
+	OrderType            model.OrderType      `json:"order_type"`
+	Direction            model.OrderDirection `json:"direction"`
+	Quantity             uint                 `json:"quantity"`
+	ContractSize         float64              `json:"contract_size"`
+	PricePerUnit         *float64             `json:"price_per_unit"`
+	LimitValue           *float64             `json:"limit_value,omitempty"`
+	StopValue            *float64             `json:"stop_value,omitempty"`
+	AllOrNone            bool                 `json:"all_or_none"`
+	Margin               bool                 `json:"margin"`
+	Status               model.OrderStatus    `json:"status"`
+	ApprovedBy           *uint                `json:"approved_by,omitempty"`
+	IsDone               bool                 `json:"is_done"`
+	AfterHours           bool                 `json:"after_hours"`
+	RemainingPortions    uint                 `json:"remaining_portions"`
+	PlannedExecutionTime *time.Time           `json:"planned_execution_time,omitempty"`
+	CreatedAt            time.Time            `json:"created_at"`
+	UpdatedAt            time.Time            `json:"updated_at"`
+}
+
+func ToOrderWithExecutionResponse(o model.Order) OrderWithExecutionResponse {
+	return OrderWithExecutionResponse{
+		OrderID:              o.OrderID,
+		UserID:               o.UserID,
+		AccountNumber:        o.AccountNumber,
+		ListingID:            o.ListingID,
+		Ticker:               listingAssetTicker(o.Listing),
+		ListingName:          listingAssetName(o.Listing),
+		OrderType:            o.OrderType,
+		Direction:            o.Direction,
+		Quantity:             o.Quantity,
+		ContractSize:         o.ContractSize,
+		PricePerUnit:         o.PricePerUnit,
+		LimitValue:           o.LimitValue,
+		StopValue:            o.StopValue,
+		AllOrNone:            o.AllOrNone,
+		Margin:               o.Margin,
+		Status:               o.Status,
+		ApprovedBy:           o.ApprovedBy,
+		IsDone:               o.IsDone,
+		AfterHours:           o.AfterHours,
+		RemainingPortions:    o.RemainingPortions(),
+		PlannedExecutionTime: o.NextExecutionAt,
+		CreatedAt:            o.CreatedAt,
+		UpdatedAt:            o.UpdatedAt,
+	}
+}
+
+func ToOrderWithExecutionResponseList(orders []model.Order) []OrderWithExecutionResponse {
+	result := make([]OrderWithExecutionResponse, len(orders))
+	for i, o := range orders {
+		result[i] = ToOrderWithExecutionResponse(o)
+	}
+	return result
+}
+
+type ListOrdersWithExecutionResponse struct {
+	Data     []OrderWithExecutionResponse `json:"data"`
+	Total    int64                        `json:"total"`
+	Page     int                          `json:"page"`
+	PageSize int                          `json:"page_size"`
+}

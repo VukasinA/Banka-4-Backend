@@ -435,3 +435,75 @@ func TestCreateOrder_ExpiredOption_ReturnsError(t *testing.T) {
 	require.Nil(t, order)
 	require.Contains(t, err.Error(), "expired option")
 }
+
+// ── GetOrdersForUser Tests ────────────────────────────────────────
+
+func TestGetOrdersForUser(t *testing.T) {
+	cases := []struct {
+		name       string
+		userID     uint
+		repoOrders []model.Order
+		repoTotal  int64
+		repoErr    error
+		wantErr    bool
+		wantTotal  int64
+		wantCount  int
+		wantUserID uint
+	}{
+		{
+			name:   "happy path returns orders for user",
+			userID: 42,
+			repoOrders: []model.Order{
+				{OrderID: 1, UserID: 42, Status: model.OrderStatusApproved},
+				{OrderID: 2, UserID: 42, Status: model.OrderStatusPending},
+			},
+			repoTotal:  2,
+			wantCount:  2,
+			wantTotal:  2,
+			wantUserID: 42,
+		},
+		{
+			name:       "empty results",
+			userID:     99,
+			repoOrders: []model.Order{},
+			repoTotal:  0,
+			wantCount:  0,
+			wantTotal:  0,
+			wantUserID: 99,
+		},
+		{
+			name:       "repo error returns internal error",
+			userID:     1,
+			repoErr:    errors.New("db connection failed"),
+			wantErr:    true,
+			wantUserID: 1,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := &fakeOrderRepo{
+				orders:  tc.repoOrders,
+				total:   tc.repoTotal,
+				findErr: tc.repoErr,
+			}
+
+			svc := newTestOrderService(repo, &fakeOrderTransactionRepo{}, &fakeExchangeRepo{}, &fakeListingRepo{}, &fakeUserServiceClient{}, &fakeOrderBankingClient{}, &fakeTaxRecorder{})
+
+			query := dto.ListOrdersQuery{Page: 1, PageSize: 10}
+			orders, total, err := svc.GetOrdersForUser(context.Background(), tc.userID, query)
+
+			require.NotNil(t, repo.capturedUserID, "FindAll must be called with non-nil userID")
+			require.Equal(t, tc.wantUserID, *repo.capturedUserID)
+
+			if tc.wantErr {
+				require.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tc.wantTotal, total)
+			require.Len(t, orders, tc.wantCount)
+		})
+	}
+}

@@ -10,7 +10,6 @@ import (
 	"log"
 	"net/http/httptest"
 	"os"
-	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -503,11 +502,7 @@ func authHeaderForClient(t *testing.T, identityID, clientID uint) string {
 
 func uniqueValue(t *testing.T, prefix string) string {
 	t.Helper()
-	name := strings.NewReplacer("/", "-", " ", "-", ":", "-").Replace(strings.ToLower(t.Name()))
-	if len(name) > 15 {
-		name = name[:15]
-	}
-	return fmt.Sprintf("%s-%s-%d-%d", prefix, name, time.Now().UnixNano(), uniqueCounter.Add(1))
+	return fmt.Sprintf("%s%d", prefix, uniqueCounter.Add(1))
 }
 
 func performRequest(t *testing.T, router *gin.Engine, method, path string, body any, authorization string) *httptest.ResponseRecorder {
