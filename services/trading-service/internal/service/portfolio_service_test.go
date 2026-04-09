@@ -17,10 +17,14 @@ var errTest = errors.New("repo error")
 // --- Fake repos ---
 
 type fakeAssetOwnershipRepo struct {
-	ownerships []model.AssetOwnership
-	err        error
-	byID       *model.AssetOwnership
-	findByIDErr error
+	ownerships    []model.AssetOwnership
+	err           error
+	byID          *model.AssetOwnership
+	findByIDErr   error
+	allPublic     []model.AssetOwnership
+	allPublicTotal int64
+	allPublicErr  error
+	updateOTCErr  error
 }
 
 func (r *fakeAssetOwnershipRepo) FindByIdentity(_ context.Context, _ uint, _ model.OwnerType) ([]model.AssetOwnership, error) {
@@ -33,6 +37,14 @@ func (r *fakeAssetOwnershipRepo) FindByID(_ context.Context, _ uint) (*model.Ass
 
 func (r *fakeAssetOwnershipRepo) Upsert(_ context.Context, _ *model.AssetOwnership) error {
 	return nil
+}
+
+func (r *fakeAssetOwnershipRepo) FindAllPublic(_ context.Context, _, _ int) ([]model.AssetOwnership, int64, error) {
+	return r.allPublic, r.allPublicTotal, r.allPublicErr
+}
+
+func (r *fakeAssetOwnershipRepo) UpdateOTCFields(_ context.Context, _ uint, _, _ float64) error {
+	return r.updateOTCErr
 }
 
 type fakeStockRepo struct {

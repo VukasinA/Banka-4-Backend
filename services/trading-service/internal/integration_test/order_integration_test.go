@@ -49,6 +49,9 @@ func TestCreateOrder_LimitOrder(t *testing.T) {
 	listing := seedListing(t, db, "MSFT", ex.MicCode, model.AssetTypeStock, 400.0)
 	seedStock(t, db, listing.ListingID)
 
+	// supervisor has identityID=100, ownerType=ACTUARY
+	seedAssetOwnership(t, db, 100, model.OwnerTypeActuary, listing.AssetID, 20)
+
 	auth := authHeaderForSupervisor(t)
 
 	body := map[string]any{

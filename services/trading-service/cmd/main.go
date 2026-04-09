@@ -95,7 +95,6 @@ func main() {
 			service.NewTaxService,
 			handler.NewTaxHandler,
 			service.NewTaxScheduler,
-			repository.NewOTCRepository,
 			service.NewOTCService,
 			handler.NewOTCHandler,
 		),
@@ -125,7 +124,6 @@ func main() {
 				&model.FuturesContract{},
 				&model.AccumulatedTax{},
 				&model.TaxCollection{},
-				&model.OTCInfo{},
 			)
 		}),
 		fx.Invoke(func(lc fx.Lifecycle, svc *service.StockService) {
@@ -146,9 +144,6 @@ func main() {
 		}),
 		fx.Invoke(func(db *gorm.DB) error {
 			return seed.AccumulatedTax(db)
-		}),
-		fx.Invoke(func(db *gorm.DB) error {
-			return seed.SeedPublicOTCStocks(db)
 		}),
 		fx.Invoke(server.NewServer),
 		fx.Invoke(func(lc fx.Lifecycle, scheduler *service.TaxScheduler) {
