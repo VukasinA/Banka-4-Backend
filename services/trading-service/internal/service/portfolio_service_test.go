@@ -17,18 +17,20 @@ var errTest = errors.New("repo error")
 // --- Fake repos ---
 
 type fakeAssetOwnershipRepo struct {
-	ownerships    []model.AssetOwnership
-	err           error
-	byID          *model.AssetOwnership
-	findByIDErr   error
-	allPublic     []model.AssetOwnership
+	ownerships     []model.AssetOwnership
+	err            error
+	byID           *model.AssetOwnership
+	findByIDErr    error
+	allPublic      []model.AssetOwnership
 	allPublicTotal int64
-	allPublicErr  error
-	updateOTCErr  error
+	allPublicErr   error
+	updateOTCErr   error
+	upsertErr      error
+	findErr        error
 }
 
 func (r *fakeAssetOwnershipRepo) FindByIdentity(_ context.Context, _ uint, _ model.OwnerType) ([]model.AssetOwnership, error) {
-	return r.ownerships, r.err
+	return r.ownerships, r.findErr
 }
 
 func (r *fakeAssetOwnershipRepo) FindByID(_ context.Context, _ uint) (*model.AssetOwnership, error) {
@@ -36,7 +38,7 @@ func (r *fakeAssetOwnershipRepo) FindByID(_ context.Context, _ uint) (*model.Ass
 }
 
 func (r *fakeAssetOwnershipRepo) Upsert(_ context.Context, _ *model.AssetOwnership) error {
-	return nil
+	return r.upsertErr
 }
 
 func (r *fakeAssetOwnershipRepo) FindAllPublic(_ context.Context, _, _ int) ([]model.AssetOwnership, int64, error) {
@@ -110,14 +112,14 @@ func makeOwnership(assetID uint, ticker string, amount, avgBuyPrice float64) mod
 }
 
 func makeListing(assetID uint, price float64) *model.Listing {
-    return &model.Listing{
-        ListingID: assetID,
-        AssetID:   assetID,
-        Price:     price,
-        Exchange: &model.Exchange{
-            Currency: "USD",
-        },
-    }
+	return &model.Listing{
+		ListingID: assetID,
+		AssetID:   assetID,
+		Price:     price,
+		Exchange: &model.Exchange{
+			Currency: "USD",
+		},
+	}
 }
 
 // --- Tests ---
@@ -267,7 +269,7 @@ func TestGetPortfolio_EmptyOwnerships(t *testing.T) {
 
 func TestGetPortfolio_RepoError(t *testing.T) {
 	svc := NewPortfolioService(
-		&fakeAssetOwnershipRepo{err: errTest},
+		&fakeAssetOwnershipRepo{findErr: errTest},
 		&fakeStockRepo{},
 		&fakeOptionRepo{},
 		&fakeFuturesRepo{},

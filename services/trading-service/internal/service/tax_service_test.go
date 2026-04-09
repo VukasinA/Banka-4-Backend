@@ -50,6 +50,10 @@ func (f *fakeTaxRepo) AddTaxOwed(_ context.Context, _ string, _ *uint, _ float64
 	return f.addTaxErr
 }
 
+func (c *fakeBankingClient) GetAccountCurrency(_ context.Context, _ string) (string, error) {
+	return "RSD", nil
+}
+
 func (f *fakeTaxRepo) FindAllPositiveAccumulatedTax(_ context.Context) ([]model.AccumulatedTax, error) {
 	return f.positiveTaxes, f.positiveTaxesErr
 }
@@ -113,6 +117,10 @@ type fakeBankingClient struct {
 
 func (f *fakeBankingClient) GetAccountByNumber(_ context.Context, _ string) (*pb.GetAccountByNumberResponse, error) {
 	return nil, nil
+}
+
+func (f *fakeBankingClient) HasActiveLoan(_ context.Context, _ uint64) (*pb.HasActiveLoanResponse, error) {
+	return &pb.HasActiveLoanResponse{HasActiveLoan: false}, nil
 }
 
 func (f *fakeBankingClient) CreatePaymentWithoutVerification(_ context.Context, _ *pb.CreatePaymentRequest) (*pb.CreatePaymentResponse, error) {
