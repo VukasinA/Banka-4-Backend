@@ -17,6 +17,6 @@ type AssetOwnership struct {
 	Asset            Asset
 	Amount           float64 `gorm:"not null;default:0"`
 	PublicAmount     float64 `gorm:"not null;default:0"`
-	AvgBuyPrice      float64 `gorm:"not null;default:0"`
+	AvgBuyPriceRSD   float64 `gorm:"not null;default:0"`
 	UpdatedAt        time.Time
 }

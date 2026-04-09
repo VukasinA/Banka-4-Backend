@@ -18,15 +18,16 @@ var errTest = errors.New("repo error")
 
 type fakeAssetOwnershipRepo struct {
 	ownerships []model.AssetOwnership
-	err        error
+	upsertErr  error
+	findErr    error
 }
 
 func (r *fakeAssetOwnershipRepo) FindByIdentity(_ context.Context, _ uint, _ model.OwnerType) ([]model.AssetOwnership, error) {
-	return r.ownerships, r.err
+	return r.ownerships, r.findErr
 }
 
 func (r *fakeAssetOwnershipRepo) Upsert(_ context.Context, _ *model.AssetOwnership) error {
-	return nil
+	return r.upsertErr
 }
 
 type fakeStockRepo struct {
@@ -81,13 +82,13 @@ func (r *fakeForexRepo) FindAll(_ context.Context, _ repository.ListingFilter) (
 
 func makeOwnership(assetID uint, ticker string, amount, avgBuyPrice float64) model.AssetOwnership {
 	return model.AssetOwnership{
-		IdentityID:  1,
-		OwnerType:   model.OwnerTypeClient,
-		AssetID:     assetID,
-		Asset:       model.Asset{AssetID: assetID, Ticker: ticker, AssetType: model.AssetTypeStock},
-		Amount:      amount,
-		AvgBuyPrice: avgBuyPrice,
-		UpdatedAt:   time.Now(),
+		IdentityID:     1,
+		OwnerType:      model.OwnerTypeClient,
+		AssetID:        assetID,
+		Asset:          model.Asset{AssetID: assetID, Ticker: ticker, AssetType: model.AssetTypeStock},
+		Amount:         amount,
+		AvgBuyPriceRSD: avgBuyPrice,
+		UpdatedAt:      time.Now(),
 	}
 }
 
@@ -96,6 +97,9 @@ func makeListing(assetID uint, price float64) *model.Listing {
 		ListingID: assetID,
 		AssetID:   assetID,
 		Price:     price,
+		Exchange: &model.Exchange{
+			Currency: "USD",
+		},
 	}
 }
 
@@ -110,6 +114,7 @@ func TestGetPortfolio_HappyPath_Stock(t *testing.T) {
 		&fakeOptionRepo{},
 		&fakeFuturesRepo{},
 		&fakeForexRepo{},
+		&fakeOrderBankingClient{},
 	)
 
 	result, err := svc.GetPortfolio(context.Background(), 1, model.OwnerTypeClient)
@@ -120,7 +125,7 @@ func TestGetPortfolio_HappyPath_Stock(t *testing.T) {
 	require.Equal(t, dto.AssetTypeStock, a.Type)
 	require.Equal(t, "AAPL", a.Ticker)
 	require.Equal(t, float64(10), a.Amount)
-	require.Equal(t, 150.0, a.PricePerUnit)
+	require.Equal(t, 150.0, a.PricePerUnitRSD)
 	require.InDelta(t, (150.0-100.0)*10, a.Profit, 0.001)
 	require.NotNil(t, a.OutstandingShares)
 	require.Equal(t, float64(1_000_000), *a.OutstandingShares)
@@ -136,6 +141,7 @@ func TestGetPortfolio_HappyPath_Option(t *testing.T) {
 		&fakeOptionRepo{options: []model.Option{{OptionID: 1, AssetID: 20, Listing: makeListing(20, 8.0)}}},
 		&fakeFuturesRepo{},
 		&fakeForexRepo{},
+		&fakeOrderBankingClient{},
 	)
 
 	result, err := svc.GetPortfolio(context.Background(), 1, model.OwnerTypeClient)
@@ -159,6 +165,7 @@ func TestGetPortfolio_HappyPath_Futures(t *testing.T) {
 		&fakeOptionRepo{},
 		&fakeFuturesRepo{futures: []model.FuturesContract{{FuturesContractID: 1, AssetID: 30, Listing: makeListing(30, 210.0)}}},
 		&fakeForexRepo{},
+		&fakeOrderBankingClient{},
 	)
 
 	result, err := svc.GetPortfolio(context.Background(), 1, model.OwnerTypeClient)
@@ -181,6 +188,7 @@ func TestGetPortfolio_ZeroAmountFiltered(t *testing.T) {
 		&fakeOptionRepo{},
 		&fakeFuturesRepo{},
 		&fakeForexRepo{},
+		&fakeOrderBankingClient{},
 	)
 
 	result, err := svc.GetPortfolio(context.Background(), 1, model.OwnerTypeClient)
@@ -198,6 +206,7 @@ func TestGetPortfolio_NetAmountAfterSell(t *testing.T) {
 		&fakeOptionRepo{},
 		&fakeFuturesRepo{},
 		&fakeForexRepo{},
+		&fakeOrderBankingClient{},
 	)
 
 	result, err := svc.GetPortfolio(context.Background(), 1, model.OwnerTypeClient)
@@ -215,6 +224,7 @@ func TestGetPortfolio_PartialSell(t *testing.T) {
 		&fakeOptionRepo{},
 		&fakeFuturesRepo{},
 		&fakeForexRepo{},
+		&fakeOrderBankingClient{},
 	)
 
 	result, err := svc.GetPortfolio(context.Background(), 1, model.OwnerTypeClient)
@@ -230,6 +240,7 @@ func TestGetPortfolio_EmptyOwnerships(t *testing.T) {
 		&fakeOptionRepo{},
 		&fakeFuturesRepo{},
 		&fakeForexRepo{},
+		&fakeOrderBankingClient{},
 	)
 
 	result, err := svc.GetPortfolio(context.Background(), 1, model.OwnerTypeClient)
@@ -239,11 +250,12 @@ func TestGetPortfolio_EmptyOwnerships(t *testing.T) {
 
 func TestGetPortfolio_RepoError(t *testing.T) {
 	svc := NewPortfolioService(
-		&fakeAssetOwnershipRepo{err: errTest},
+		&fakeAssetOwnershipRepo{findErr: errTest},
 		&fakeStockRepo{},
 		&fakeOptionRepo{},
 		&fakeFuturesRepo{},
 		&fakeForexRepo{},
+		&fakeOrderBankingClient{},
 	)
 
 	_, err := svc.GetPortfolio(context.Background(), 1, model.OwnerTypeClient)
@@ -260,6 +272,7 @@ func TestGetPortfolio_NegativeProfit_NoTax(t *testing.T) {
 		&fakeOptionRepo{},
 		&fakeFuturesRepo{},
 		&fakeForexRepo{},
+		&fakeOrderBankingClient{},
 	)
 
 	result, err := svc.GetPortfolio(context.Background(), 1, model.OwnerTypeClient)
@@ -288,6 +301,7 @@ func TestGetPortfolio_MultipleAssets_ProfitAccumulation(t *testing.T) {
 		&fakeOptionRepo{},
 		&fakeFuturesRepo{},
 		&fakeForexRepo{},
+		&fakeOrderBankingClient{},
 	)
 
 	result, err := svc.GetPortfolio(context.Background(), 1, model.OwnerTypeClient)
@@ -309,6 +323,7 @@ func TestGetPortfolio_EmptyPortfolio_ZeroProfit(t *testing.T) {
 		&fakeOptionRepo{},
 		&fakeFuturesRepo{},
 		&fakeForexRepo{},
+		&fakeOrderBankingClient{},
 	)
 
 	result, err := svc.GetPortfolio(context.Background(), 1, model.OwnerTypeActuary)

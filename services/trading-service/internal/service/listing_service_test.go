@@ -271,7 +271,7 @@ func TestGetStockDetails_Success(t *testing.T) {
 		repository.NewOptionRepository(db),
 	)
 
-	result, err := svc.GetStockDetails(context.Background(), 1)
+	result, err := svc.GetStockDetails(context.Background(), 1, 0)
 	if err != nil {
 		t.Fatalf("GetStockDetails failed: %v", err)
 	}
@@ -407,7 +407,7 @@ func TestGetFutureDetails_Success(t *testing.T) {
 		repository.NewOptionRepository(db),
 	)
 
-	result, err := svc.GetFutureDetails(context.Background(), futureListing.ListingID)
+	result, err := svc.GetFutureDetails(context.Background(), futureListing.ListingID, 0)
 	if err != nil {
 		t.Fatalf("GetFutureDetails failed: %v", err)
 	}
@@ -438,7 +438,7 @@ func TestGetForexDetails_Success(t *testing.T) {
 		repository.NewOptionRepository(db),
 	)
 
-	result, err := svc.GetForexDetails(context.Background(), forexListing.ListingID)
+	result, err := svc.GetForexDetails(context.Background(), forexListing.ListingID, 0)
 	if err != nil {
 		t.Fatalf("GetForexDetails failed: %v", err)
 	}
@@ -457,20 +457,19 @@ func TestGetOptions_ReturnsAll(t *testing.T) {
 	db := setupListingTestDB(t)
 	seedListingTestData(t, db)
 
-	// Insert two option listings
-	optListing1 := model.Listing{
-		Ticker: "AAPL:CALL:150.00", Name: "AAPL CALL 150", ExchangeMIC: model.SimulatedExchangeMIC,
-		Price: 5.0, Ask: 5.1, ListingType: model.ListingTypeOption, LastRefresh: time.Now(),
-	}
-	optListing2 := model.Listing{
-		Ticker: "AAPL:PUT:140.00", Name: "AAPL PUT 140", ExchangeMIC: model.SimulatedExchangeMIC,
-		Price: 3.0, Ask: 3.1, ListingType: model.ListingTypeOption, LastRefresh: time.Now(),
-	}
+	// Insert two option assets, listings, and options
+	optAsset1 := model.Asset{Ticker: "AAPL:CALL:150.00", Name: "AAPL CALL 150", AssetType: model.AssetTypeOption}
+	optAsset2 := model.Asset{Ticker: "AAPL:PUT:140.00", Name: "AAPL PUT 140", AssetType: model.AssetTypeOption}
+	db.Create(&optAsset1)
+	db.Create(&optAsset2)
+
+	optListing1 := model.Listing{AssetID: optAsset1.AssetID, ExchangeMIC: model.SimulatedExchangeMIC, Price: 5.0, Ask: 5.1, LastRefresh: time.Now()}
+	optListing2 := model.Listing{AssetID: optAsset2.AssetID, ExchangeMIC: model.SimulatedExchangeMIC, Price: 3.0, Ask: 3.1, LastRefresh: time.Now()}
 	db.Create(&optListing1)
 	db.Create(&optListing2)
 
-	opt1 := model.Option{ListingID: optListing1.ListingID, StockID: 1, OptionType: model.OptionTypeCall, StrikePrice: 150.0, ContractSize: 100, SettlementDate: time.Now().AddDate(0, 1, 0)}
-	opt2 := model.Option{ListingID: optListing2.ListingID, StockID: 1, OptionType: model.OptionTypePut, StrikePrice: 140.0, ContractSize: 100, SettlementDate: time.Now().AddDate(0, 1, 0)}
+	opt1 := model.Option{AssetID: optAsset1.AssetID, StockID: 1, OptionType: model.OptionTypeCall, StrikePrice: 150.0, ContractSize: 100, SettlementDate: time.Now().AddDate(0, 1, 0)}
+	opt2 := model.Option{AssetID: optAsset2.AssetID, StockID: 1, OptionType: model.OptionTypePut, StrikePrice: 140.0, ContractSize: 100, SettlementDate: time.Now().AddDate(0, 1, 0)}
 	db.Create(&opt1)
 	db.Create(&opt2)
 
@@ -519,7 +518,7 @@ func TestGetFutureDetails_NotFound_WrongType(t *testing.T) {
 	)
 
 	// Use ID=1 which is a stock, not a future
-	_, err := svc.GetFutureDetails(context.Background(), 1)
+	_, err := svc.GetFutureDetails(context.Background(), 1, 0)
 	if err == nil {
 		t.Fatal("expected error when listing type is not future")
 	}
@@ -536,7 +535,7 @@ func TestGetFutureDetails_ListingNotFound(t *testing.T) {
 		repository.NewOptionRepository(db),
 	)
 
-	_, err := svc.GetFutureDetails(context.Background(), 99999)
+	_, err := svc.GetFutureDetails(context.Background(), 99999, 0)
 	if err == nil {
 		t.Fatal("expected error for nonexistent listing")
 	}
@@ -556,7 +555,7 @@ func TestGetForexDetails_NotFound_WrongType(t *testing.T) {
 	)
 
 	// Use ID=1 which is a stock, not a forex pair
-	_, err := svc.GetForexDetails(context.Background(), 1)
+	_, err := svc.GetForexDetails(context.Background(), 1, 0)
 	if err == nil {
 		t.Fatal("expected error when listing type is not forexPair")
 	}
@@ -573,7 +572,7 @@ func TestGetForexDetails_ListingNotFound(t *testing.T) {
 		repository.NewOptionRepository(db),
 	)
 
-	_, err := svc.GetForexDetails(context.Background(), 99999)
+	_, err := svc.GetForexDetails(context.Background(), 99999, 0)
 	if err == nil {
 		t.Fatal("expected error for nonexistent listing")
 	}
@@ -593,7 +592,7 @@ func TestGetOptionDetails_NotFound_WrongType(t *testing.T) {
 	)
 
 	// Use ID=1 which is a stock, not an option
-	_, err := svc.GetOptionDetails(context.Background(), 1)
+	_, err := svc.GetOptionDetails(context.Background(), 1, 0)
 	if err == nil {
 		t.Fatal("expected error when listing type is not option")
 	}
@@ -610,7 +609,7 @@ func TestGetOptionDetails_ListingNotFound(t *testing.T) {
 		repository.NewOptionRepository(db),
 	)
 
-	_, err := svc.GetOptionDetails(context.Background(), 99999)
+	_, err := svc.GetOptionDetails(context.Background(), 99999, 0)
 	if err == nil {
 		t.Fatal("expected error for nonexistent listing")
 	}
@@ -707,7 +706,7 @@ func TestGetOptionDetails_Success(t *testing.T) {
 		repository.NewOptionRepository(db),
 	)
 
-	result, err := svc.GetOptionDetails(context.Background(), optionListing.ListingID)
+	result, err := svc.GetOptionDetails(context.Background(), optionListing.ListingID, 0)
 	if err != nil {
 		t.Fatalf("GetOptionDetails failed: %v", err)
 	}

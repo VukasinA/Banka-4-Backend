@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/RAF-SI-2025/Banka-4-Backend/common/pkg/permission"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/model"
 )
 
@@ -18,7 +19,7 @@ func TestGetStocks(t *testing.T) {
 	router, _ := setupTestRouter(t, db)
 
 	ex := seedExchange(t, db, "XNYS")
-	listing := seedListing(t, db, "AAPL", ex.MicCode, model.ListingTypeStock, 150.0)
+	listing := seedListing(t, db, "AAPL", ex.MicCode, model.AssetTypeStock, 150.0)
 	seedStock(t, db, listing.ListingID)
 	seedDailyPriceInfo(t, db, listing.ListingID)
 
@@ -35,13 +36,28 @@ func TestGetStocks_AsClient(t *testing.T) {
 	router, _ := setupTestRouter(t, db)
 
 	ex := seedExchange(t, db, "XNYS")
-	listing := seedListing(t, db, "MSFT", ex.MicCode, model.ListingTypeStock, 300.0)
+	listing := seedListing(t, db, "MSFT", ex.MicCode, model.AssetTypeStock, 300.0)
 	seedStock(t, db, listing.ListingID)
 
 	auth := authHeaderForClient(t, 50, 1)
 
 	rec := performRequest(t, router, http.MethodGet, "/api/listings/stocks", nil, auth)
 	requireStatus(t, rec, http.StatusOK)
+}
+
+func TestGetStocks_ForbiddenWithoutTradingPermission(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router, _ := setupTestRouterWithPermissions(t, db, []permission.Permission{})
+
+	ex := seedExchange(t, db, "XNYS")
+	listing := seedListing(t, db, "MSFT", ex.MicCode, model.AssetTypeStock, 300.0)
+	seedStock(t, db, listing.ListingID)
+
+	auth := authHeaderForClient(t, 50, 1)
+
+	rec := performRequest(t, router, http.MethodGet, "/api/listings/stocks", nil, auth)
+	requireStatus(t, rec, http.StatusForbidden)
 }
 
 func TestGetStocks_Unauthorized(t *testing.T) {
@@ -59,7 +75,7 @@ func TestGetStockDetails(t *testing.T) {
 	router, _ := setupTestRouter(t, db)
 
 	ex := seedExchange(t, db, "XNYS")
-	listing := seedListing(t, db, "GOOG", ex.MicCode, model.ListingTypeStock, 140.0)
+	listing := seedListing(t, db, "GOOG", ex.MicCode, model.AssetTypeStock, 140.0)
 	seedStock(t, db, listing.ListingID)
 	seedDailyPriceInfo(t, db, listing.ListingID)
 
@@ -98,7 +114,7 @@ func TestGetFutures(t *testing.T) {
 	router, _ := setupTestRouter(t, db)
 
 	ex := seedExchange(t, db, "XCME")
-	listing := seedListing(t, db, "CLF25", ex.MicCode, model.ListingTypeFuture, 75.0)
+	listing := seedListing(t, db, "CLF25", ex.MicCode, model.AssetTypeFuture, 75.0)
 	seedFuture(t, db, listing.ListingID)
 
 	auth := authHeaderForAgent(t)
@@ -113,7 +129,7 @@ func TestGetFutureDetails(t *testing.T) {
 	router, _ := setupTestRouter(t, db)
 
 	ex := seedExchange(t, db, "XCME")
-	listing := seedListing(t, db, "ESH26", ex.MicCode, model.ListingTypeFuture, 5000.0)
+	listing := seedListing(t, db, "ESH26", ex.MicCode, model.AssetTypeFuture, 5000.0)
 	seedFuture(t, db, listing.ListingID)
 	seedDailyPriceInfo(t, db, listing.ListingID)
 
@@ -130,7 +146,7 @@ func TestGetForex(t *testing.T) {
 	router, _ := setupTestRouter(t, db)
 
 	ex := seedExchange(t, db, "XFOR")
-	listing := seedListing(t, db, "EURUSD", ex.MicCode, model.ListingTypeForexPair, 1.08)
+	listing := seedListing(t, db, "EURUSD", ex.MicCode, model.AssetTypeForexPair, 1.08)
 	seedForex(t, db, listing.ListingID)
 
 	auth := authHeaderForSupervisor(t)
@@ -145,7 +161,7 @@ func TestGetForexDetails(t *testing.T) {
 	router, _ := setupTestRouter(t, db)
 
 	ex := seedExchange(t, db, "XFOR")
-	listing := seedListing(t, db, "GBPUSD", ex.MicCode, model.ListingTypeForexPair, 1.27)
+	listing := seedListing(t, db, "GBPUSD", ex.MicCode, model.AssetTypeForexPair, 1.27)
 	seedForex(t, db, listing.ListingID)
 
 	auth := authHeaderForSupervisor(t)
@@ -160,10 +176,10 @@ func TestGetOptions(t *testing.T) {
 	router, _ := setupTestRouter(t, db)
 
 	ex := seedExchange(t, db, "XNYS")
-	stockListing := seedListing(t, db, "TSLA", ex.MicCode, model.ListingTypeStock, 250.0)
+	stockListing := seedListing(t, db, "TSLA", ex.MicCode, model.AssetTypeStock, 250.0)
 	stock := seedStock(t, db, stockListing.ListingID)
 
-	optListing := seedListing(t, db, "TSLA250C", ex.MicCode, model.ListingTypeOption, 15.0)
+	optListing := seedListing(t, db, "TSLA250C", ex.MicCode, model.AssetTypeOption, 15.0)
 	seedOption(t, db, optListing.ListingID, stock.StockID)
 
 	auth := authHeaderForSupervisor(t)
@@ -178,10 +194,10 @@ func TestGetOptionDetails(t *testing.T) {
 	router, _ := setupTestRouter(t, db)
 
 	ex := seedExchange(t, db, "XNYS")
-	stockListing := seedListing(t, db, "NVDA", ex.MicCode, model.ListingTypeStock, 800.0)
+	stockListing := seedListing(t, db, "NVDA", ex.MicCode, model.AssetTypeStock, 800.0)
 	stock := seedStock(t, db, stockListing.ListingID)
 
-	optListing := seedListing(t, db, "NVDA850C", ex.MicCode, model.ListingTypeOption, 30.0)
+	optListing := seedListing(t, db, "NVDA850C", ex.MicCode, model.AssetTypeOption, 30.0)
 	seedOption(t, db, optListing.ListingID, stock.StockID)
 	seedDailyPriceInfo(t, db, optListing.ListingID)
 
