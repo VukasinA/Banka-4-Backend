@@ -436,6 +436,23 @@ func seedOrder(t *testing.T, db *gorm.DB, userID, listingID uint, direction mode
 	return order
 }
 
+func seedAssetOwnership(t *testing.T, db *gorm.DB, identityID uint, ownerType model.OwnerType, assetID uint, amount float64) *model.AssetOwnership {
+	t.Helper()
+
+	ownership := &model.AssetOwnership{
+		IdentityID: identityID,
+		OwnerType:  ownerType,
+		AssetID:    assetID,
+		Amount:     amount,
+	}
+
+	if err := db.Create(ownership).Error; err != nil {
+		t.Fatalf("seed asset ownership: %v", err)
+	}
+
+	return ownership
+}
+
 func seedDailyPriceInfo(t *testing.T, db *gorm.DB, listingID uint) {
 	t.Helper()
 
