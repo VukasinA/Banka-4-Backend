@@ -50,6 +50,10 @@ func (f *fakeTaxRepo) AddTaxOwed(_ context.Context, _ string, _ *uint, _ float64
 	return f.addTaxErr
 }
 
+func (c *fakeBankingClient) GetAccountCurrency(_ context.Context, _ string) (string, error) {
+	return "RSD", nil
+}
+
 func (f *fakeTaxRepo) FindAllPositiveAccumulatedTax(_ context.Context) ([]model.AccumulatedTax, error) {
 	return f.positiveTaxes, f.positiveTaxesErr
 }

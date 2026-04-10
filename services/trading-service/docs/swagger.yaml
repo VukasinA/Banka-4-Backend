@@ -708,6 +708,10 @@ paths:
           description: Forbidden
           schema:
             $ref: '#/definitions/errors.AppError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errors.AppError'
         "500":
           description: Internal Server Error
           schema:
@@ -744,6 +748,10 @@ paths:
             $ref: '#/definitions/errors.AppError'
         "403":
           description: Forbidden
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "404":
+          description: Not Found
           schema:
             $ref: '#/definitions/errors.AppError'
         "500":
@@ -876,6 +884,10 @@ paths:
           description: Forbidden
           schema:
             $ref: '#/definitions/errors.AppError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errors.AppError'
         "500":
           description: Internal Server Error
           schema:
@@ -912,6 +924,10 @@ paths:
             $ref: '#/definitions/errors.AppError'
         "403":
           description: Forbidden
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "404":
+          description: Not Found
           schema:
             $ref: '#/definitions/errors.AppError'
         "500":
@@ -1058,6 +1074,10 @@ paths:
         name: listingId
         required: true
         type: integer
+      - description: History range in days
+        in: query
+        name: days
+        type: integer
       produces:
       - application/json
       responses:
@@ -1170,6 +1190,10 @@ paths:
         in: path
         name: listingId
         required: true
+        type: integer
+      - description: History range in days
+        in: query
+        name: days
         type: integer
       produces:
       - application/json
@@ -1284,6 +1308,10 @@ paths:
         name: listingId
         required: true
         type: integer
+      - description: History range in days
+        in: query
+        name: days
+        type: integer
       produces:
       - application/json
       responses:
@@ -1308,7 +1336,7 @@ paths:
       summary: Get option details
       tags:
       - listings
-  /api/listings/stock/listingId:
+  /api/listings/stock/{listingId}:
     get:
       consumes:
       - application/json
@@ -1318,6 +1346,10 @@ paths:
         in: path
         name: listingId
         required: true
+        type: integer
+      - description: History range in days
+        in: query
+        name: days_back
         type: integer
       produces:
       - application/json

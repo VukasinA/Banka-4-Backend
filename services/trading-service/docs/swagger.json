@@ -111,6 +111,12 @@
                             "$ref": "#/definitions/errors.AppError"
                         }
                     },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -165,6 +171,12 @@
                     },
                     "403": {
                         "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/errors.AppError"
                         }
@@ -365,6 +377,12 @@
                             "$ref": "#/definitions/errors.AppError"
                         }
                     },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -419,6 +437,12 @@
                     },
                     "403": {
                         "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/errors.AppError"
                         }
@@ -643,6 +667,12 @@
                         "name": "listingId",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "History range in days",
+                        "name": "days",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -815,6 +845,12 @@
                         "name": "listingId",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "History range in days",
+                        "name": "days",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -987,6 +1023,12 @@
                         "name": "listingId",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "History range in days",
+                        "name": "days",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -1017,7 +1059,7 @@
                 }
             }
         },
-        "/api/listings/stock/listingId": {
+        "/api/listings/stock/{listingId}": {
             "get": {
                 "security": [
                     {
@@ -1042,6 +1084,12 @@
                         "name": "listingId",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "History range in days",
+                        "name": "days_back",
+                        "in": "query"
                     }
                 ],
                 "responses": {

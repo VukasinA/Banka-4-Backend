@@ -119,6 +119,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/errors.AppError"
                         }
                     },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -173,6 +179,12 @@ const docTemplate = `{
                     },
                     "403": {
                         "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/errors.AppError"
                         }
@@ -373,6 +385,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/errors.AppError"
                         }
                     },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -427,6 +445,12 @@ const docTemplate = `{
                     },
                     "403": {
                         "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/errors.AppError"
                         }
@@ -651,6 +675,12 @@ const docTemplate = `{
                         "name": "listingId",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "History range in days",
+                        "name": "days",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -823,6 +853,12 @@ const docTemplate = `{
                         "name": "listingId",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "History range in days",
+                        "name": "days",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -995,6 +1031,12 @@ const docTemplate = `{
                         "name": "listingId",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "History range in days",
+                        "name": "days",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -1025,7 +1067,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/listings/stock/listingId": {
+        "/api/listings/stock/{listingId}": {
             "get": {
                 "security": [
                     {
@@ -1050,6 +1092,12 @@ const docTemplate = `{
                         "name": "listingId",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "History range in days",
+                        "name": "days_back",
+                        "in": "query"
                     }
                 ],
                 "responses": {

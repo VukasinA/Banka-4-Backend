@@ -8,6 +8,7 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"log"
 
 	pkgerrors "github.com/RAF-SI-2025/Banka-4-Backend/common/pkg/errors"
 	pb "github.com/RAF-SI-2025/Banka-4-Backend/common/pkg/pb"
@@ -25,6 +26,7 @@ type PortfolioService struct {
 	forexRepo     repository.ForexRepository
 	bankingClient client.BankingClient
 	now           func() time.Time
+	userClient    client.UserServiceClient
 }
 
 func NewPortfolioService(
@@ -34,6 +36,7 @@ func NewPortfolioService(
 	futuresRepo repository.FuturesContractRepository,
 	forexRepo repository.ForexRepository,
 	bankingClient client.BankingClient,
+	userClient client.UserServiceClient,
 ) *PortfolioService {
 	return &PortfolioService{
 		ownershipRepo: ownershipRepo,
@@ -43,7 +46,24 @@ func NewPortfolioService(
 		forexRepo:     forexRepo,
 		bankingClient: bankingClient,
 		now:           time.Now,
+		userClient:    userClient,
 	}
+}
+
+func (s *PortfolioService) GetClientPortfolio(ctx context.Context, clientID uint) ([]dto.PortfolioAssetResponse, error) {
+	resp, err := s.userClient.GetClientById(ctx, uint64(clientID))
+	if err != nil {
+		return nil, pkgerrors.NotFoundErr("client not found")
+	}
+	return s.GetPortfolio(ctx, uint(resp.IdentityId), model.OwnerTypeClient)
+}
+
+func (s *PortfolioService) GetActuaryPortfolio(ctx context.Context, actuaryID uint) ([]dto.PortfolioAssetResponse, error) {
+	resp, err := s.userClient.GetEmployeeById(ctx, uint64(actuaryID))
+	if err != nil {
+		return nil, pkgerrors.NotFoundErr("actuary not found")
+	}
+	return s.GetPortfolio(ctx, uint(resp.IdentityId), model.OwnerTypeActuary)
 }
 
 func (s *PortfolioService) GetPortfolio(ctx context.Context, identityID uint, ownerType model.OwnerType) ([]dto.PortfolioAssetResponse, error) {
