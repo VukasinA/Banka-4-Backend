@@ -1654,7 +1654,6 @@ paths:
       summary: Decline a pending order
       tags:
       - orders
-<<<<<<< HEAD
   /api/otc/public:
     get:
       description: Returns a paginated list of assets that have been marked public
@@ -1689,34 +1688,7 @@ paths:
       summary: List all publicly available OTC assets
       tags:
       - otc
-  /api/tax/collect:
-    post:
-      description: Runs the tax collection process for all users. Restricted to authorized
-        personnel.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.CollectTaxesResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/errors.AppError'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/errors.AppError'
-      security:
-      - BearerAuth: []
-      summary: Trigger tax collection
-      tags:
-      - tax
-  /api/tax/users:
-=======
   /api/tax:
->>>>>>> 11f49eb9da90c78dd8490889b0046f10ee580a0b
     get:
       description: Returns a paginated list of clients and/or actuaries with their
         total tax owed in RSD. Filterable by user type, first name, and last name.

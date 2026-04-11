@@ -189,8 +189,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/errors.AppError"
                         }
                     },
-<<<<<<< HEAD
-=======
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -274,7 +272,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/errors.AppError"
                         }
                     },
->>>>>>> 11f49eb9da90c78dd8490889b0046f10ee580a0b
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -458,7 +455,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/errors.AppError"
                         }
                     },
-<<<<<<< HEAD
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -529,8 +525,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/errors.AppError"
                         }
                     },
-=======
->>>>>>> 11f49eb9da90c78dd8490889b0046f10ee580a0b
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -1546,7 +1540,6 @@ const docTemplate = `{
                 }
             }
         },
-<<<<<<< HEAD
         "/api/otc/public": {
             "get": {
                 "security": [
@@ -1599,47 +1592,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/tax/collect": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Runs the tax collection process for all users. Restricted to authorized personnel.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "tax"
-                ],
-                "summary": "Trigger tax collection",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/dto.CollectTaxesResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/errors.AppError"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/errors.AppError"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/tax/users": {
-=======
         "/api/tax": {
->>>>>>> 11f49eb9da90c78dd8490889b0046f10ee580a0b
             "get": {
                 "security": [
                     {
