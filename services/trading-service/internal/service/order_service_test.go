@@ -442,6 +442,11 @@ func TestCreateOrder_LimitSell_Success(t *testing.T) {
 		return time.Date(2025, 6, 4, 10, 0, 0, 0, time.UTC)
 	}
 
+	svc.assetOwnershipRepo = &fakeAssetOwnershipRepo{
+		ownerships: []model.AssetOwnership{
+			{AssetID: listing.AssetID, IdentityID: 1, OwnerType: model.OwnerTypeClient, Amount: 10},
+		},
+	}
 	ctx := clientAuthCtx()
 	req := dto.CreateOrderRequest{
 		ListingID:     1,

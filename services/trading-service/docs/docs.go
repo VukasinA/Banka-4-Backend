@@ -189,6 +189,92 @@ const docTemplate = `{
                             "$ref": "#/definitions/errors.AppError"
                         }
                     },
+<<<<<<< HEAD
+=======
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/actuary/{actId}/options/{assetId}/exercise": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Exercises one contract of an actuary-owned in-the-money call option and buys the underlying stock at the strike price.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "portfolio"
+                ],
+                "summary": "Exercise an owned option",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Actuary ID",
+                        "name": "actId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Option asset ID",
+                        "name": "assetId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Exercise request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.ExerciseOptionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ExerciseOptionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+>>>>>>> 11f49eb9da90c78dd8490889b0046f10ee580a0b
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -372,6 +458,7 @@ const docTemplate = `{
                             "$ref": "#/definitions/errors.AppError"
                         }
                     },
+<<<<<<< HEAD
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -442,6 +529,8 @@ const docTemplate = `{
                             "$ref": "#/definitions/errors.AppError"
                         }
                     },
+=======
+>>>>>>> 11f49eb9da90c78dd8490889b0046f10ee580a0b
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -451,7 +540,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/exchange": {
+        "/api/exchanges": {
             "get": {
                 "description": "Returns a paginated list of all stock exchanges",
                 "produces": [
@@ -504,7 +593,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/exchange/{micCode}/toggle": {
+        "/api/exchanges/{micCode}/toggle": {
             "patch": {
                 "description": "Enables or disables trading time enforcement for a specific exchange (for testing purposes)",
                 "produces": [
@@ -1457,6 +1546,7 @@ const docTemplate = `{
                 }
             }
         },
+<<<<<<< HEAD
         "/api/otc/public": {
             "get": {
                 "security": [
@@ -1547,6 +1637,9 @@ const docTemplate = `{
             }
         },
         "/api/tax/users": {
+=======
+        "/api/tax": {
+>>>>>>> 11f49eb9da90c78dd8490889b0046f10ee580a0b
             "get": {
                 "security": [
                     {
@@ -1607,6 +1700,43 @@ const docTemplate = `{
                         "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/tax/collect": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Runs the tax collection process for all users. Restricted to authorized personnel.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tax"
+                ],
+                "summary": "Trigger tax collection",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.CollectTaxesResponse"
                         }
                     },
                     "401": {
@@ -1762,6 +1892,58 @@ const docTemplate = `{
                 },
                 "trading_enabled": {
                     "type": "boolean"
+                }
+            }
+        },
+        "dto.ExerciseOptionRequest": {
+            "type": "object",
+            "required": [
+                "account_number"
+            ],
+            "properties": {
+                "account_number": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.ExerciseOptionResponse": {
+            "type": "object",
+            "properties": {
+                "destination_amount": {
+                    "type": "number"
+                },
+                "destination_currency_code": {
+                    "type": "string"
+                },
+                "exercised_contracts": {
+                    "type": "integer"
+                },
+                "option_asset_id": {
+                    "type": "integer"
+                },
+                "purchased_shares": {
+                    "type": "number"
+                },
+                "remaining_contracts": {
+                    "type": "integer"
+                },
+                "remaining_option_shares": {
+                    "type": "number"
+                },
+                "source_amount": {
+                    "type": "number"
+                },
+                "source_currency_code": {
+                    "type": "string"
+                },
+                "stock_asset_id": {
+                    "type": "integer"
+                },
+                "strike_price": {
+                    "type": "number"
+                },
+                "total_cost": {
+                    "type": "number"
                 }
             }
         },
@@ -2314,6 +2496,9 @@ const docTemplate = `{
             "properties": {
                 "amount": {
                     "type": "number"
+                },
+                "assetId": {
+                    "type": "integer"
                 },
                 "avgBuyPrice": {
                     "type": "number"
