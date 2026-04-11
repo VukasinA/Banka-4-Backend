@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"fmt"
-	"log"
 
 	pkgerrors "github.com/RAF-SI-2025/Banka-4-Backend/common/pkg/errors"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/client"
@@ -73,7 +72,6 @@ func (s *PortfolioService) GetPortfolio(ctx context.Context, identityID uint, ow
 			assetIDs = append(assetIDs, o.AssetID)
 		}
 	}
-	log.Printf("Found %d active asset ownerships for identity %d (owner type %s)", len(active), identityID, ownerType) // Debug log
 
 	if len(active) == 0 {
 		return []dto.PortfolioAssetResponse{}, nil
@@ -154,14 +152,14 @@ func (s *PortfolioService) GetPortfolio(ctx context.Context, identityID uint, ow
 		}
 
 		result = append(result, dto.PortfolioAssetResponse{
-			Type:              m.assetType,
-			Ticker:            ticker,
-			Amount:            o.Amount,
-			PricePerUnitRSD:   currentPriceRSD,
-			AvgBuyPriceRSD:    o.AvgBuyPriceRSD,
-			LastModified:      o.UpdatedAt,
-			Profit:            profit,
-			PublicAmount: o.PublicAmount,
+			Type:            m.assetType,
+			Ticker:          ticker,
+			Amount:          o.Amount,
+			PricePerUnitRSD: currentPriceRSD,
+			AvgBuyPriceRSD:  o.AvgBuyPriceRSD,
+			LastModified:    o.UpdatedAt,
+			Profit:          profit,
+			PublicAmount:    o.PublicAmount,
 		})
 	}
 

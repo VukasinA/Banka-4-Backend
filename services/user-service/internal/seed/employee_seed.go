@@ -181,42 +181,6 @@ func Run(db *gorm.DB) error {
 			return err
 		}
 	}
-	// seed trading permissions for clients that should have trading access
-	tradingClientEmails := []string{
-		"marko.markovic@example.com",
-		"ana.anic@example.com",
-		"stefan.stefanovic@example.com",
-		"mirko.mirkovic@example.com",
-	}
-	for _, email := range tradingClientEmails {
-		var identity model.Identity
-		if err := db.Where("email = ?", email).First(&identity).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				continue
-			}
-			return err
-		}
-		var client model.Client
-		if err := db.Where("identity_id = ?", identity.ID).First(&client).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				continue
-			}
-			return err
-		}
-		for _, p := range []permission.Permission{permission.Trading, permission.TradingMargin} {
-			var existing model.ClientPermission
-			err := db.Where("client_id = ? AND permission = ?", client.ClientID, string(p)).First(&existing).Error
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				perm := model.ClientPermission{ClientID: client.ClientID, Permission: p}
-				if err := db.Create(&perm).Error; err != nil {
-					return err
-				}
-			} else if err != nil {
-				return err
-			}
-		}
-	}
-
 	// seed activatable clients, activated in place
 	for _, c := range activatableClients {
 		var existingIdentity model.Identity
@@ -284,6 +248,55 @@ func Run(db *gorm.DB) error {
 		}
 	}
 
+	traderClientEmails := []string{
+		"marko.markovic@example.com",
+		"ana.anic@example.com",
+		"stefan.stefanovic@example.com",
+	}
+
+	for _, email := range traderClientEmails {
+		var clientIdentity model.Identity
+		if err := db.Where("email = ?", email).First(&clientIdentity).Error; err != nil {
+			return err
+		}
+
+		var traderClient model.Client
+		if err := db.Where("identity_id = ?", clientIdentity.ID).First(&traderClient).Error; err != nil {
+			return err
+		}
+
+		perm := model.ClientPermission{
+			ClientID:   traderClient.ClientID,
+			Permission: permission.Trading,
+		}
+		if err := db.Create(&perm).Error; err != nil {
+			return err
+		}
+	}
+
+	marginClientEmails := []string{
+		"marko.markovic@example.com",
+	}
+
+	for _, email := range marginClientEmails {
+		var clientIdentity model.Identity
+		if err := db.Where("email = ?", email).First(&clientIdentity).Error; err != nil {
+			return err
+		}
+
+		var traderClient model.Client
+		if err := db.Where("identity_id = ?", clientIdentity.ID).First(&traderClient).Error; err != nil {
+			return err
+		}
+
+		perm := model.ClientPermission{
+			ClientID:   traderClient.ClientID,
+			Permission: permission.TradingMargin,
+		}
+		if err := db.Create(&perm).Error; err != nil {
+			return err
+		}
+	}
 
 	adminEmails := []string{
 		"admin@raf.rs",
@@ -403,7 +416,7 @@ func Run(db *gorm.DB) error {
 				First(&existingPerm).Error
 
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-					newPerm := model.EmployeePermission{
+				newPerm := model.EmployeePermission{
 					EmployeeID: employee.EmployeeID,
 					Permission: perm,
 				}
