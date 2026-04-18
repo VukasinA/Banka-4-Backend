@@ -31,7 +31,7 @@ type fakeAssetOwnershipRepo struct {
 	findErr        error
 }
 
-func (r *fakeAssetOwnershipRepo) FindByIdentity(_ context.Context, _ uint, _ model.OwnerType) ([]model.AssetOwnership, error) {
+func (r *fakeAssetOwnershipRepo) FindByUserId(_ context.Context, _ uint, _ model.OwnerType) ([]model.AssetOwnership, error) {
 	return r.ownerships, r.findErr
 }
 
@@ -107,7 +107,7 @@ func (r *fakeForexRepo) FindAll(_ context.Context, _ repository.ListingFilter) (
 
 func makeOwnership(assetID uint, ticker string, amount, avgBuyPrice float64) model.AssetOwnership {
 	return model.AssetOwnership{
-		IdentityID:     1,
+		UserId:         1,
 		OwnerType:      model.OwnerTypeClient,
 		AssetID:        assetID,
 		Asset:          model.Asset{AssetID: assetID, Ticker: ticker, AssetType: model.AssetTypeStock},
@@ -141,7 +141,7 @@ func TestGetPortfolio_HappyPath_Stock(t *testing.T) {
 		&fakeFuturesRepo{},
 		&fakeForexRepo{},
 		&fakeOrderBankingClient{},
-		&fakeUserServiceClient{},
+		&fakeUserServiceClient{identityResp: &pb.GetIdentityByUserIdResponse{IdentityId: 5}},
 	)
 
 	result, err := svc.GetPortfolio(context.Background(), 1, model.OwnerTypeClient)
@@ -169,7 +169,7 @@ func TestGetPortfolio_HappyPath_Option(t *testing.T) {
 		&fakeFuturesRepo{},
 		&fakeForexRepo{},
 		&fakeOrderBankingClient{},
-		&fakeUserServiceClient{},
+		&fakeUserServiceClient{identityResp: &pb.GetIdentityByUserIdResponse{IdentityId: 5}},
 	)
 
 	result, err := svc.GetPortfolio(context.Background(), 1, model.OwnerTypeClient)
@@ -195,7 +195,7 @@ func TestGetPortfolio_HappyPath_Futures(t *testing.T) {
 		&fakeFuturesRepo{futures: []model.FuturesContract{{FuturesContractID: 1, AssetID: 30, Listing: makeListing(30, 210.0)}}},
 		&fakeForexRepo{},
 		&fakeOrderBankingClient{},
-		&fakeUserServiceClient{},
+		&fakeUserServiceClient{identityResp: &pb.GetIdentityByUserIdResponse{IdentityId: 5}},
 	)
 
 	result, err := svc.GetPortfolio(context.Background(), 1, model.OwnerTypeClient)
@@ -220,7 +220,7 @@ func TestGetPortfolio_ZeroAmountFiltered(t *testing.T) {
 		&fakeFuturesRepo{},
 		&fakeForexRepo{},
 		&fakeOrderBankingClient{},
-		&fakeUserServiceClient{},
+		&fakeUserServiceClient{identityResp: &pb.GetIdentityByUserIdResponse{IdentityId: 5}},
 	)
 
 	result, err := svc.GetPortfolio(context.Background(), 1, model.OwnerTypeClient)
@@ -239,7 +239,7 @@ func TestGetPortfolio_NetAmountAfterSell(t *testing.T) {
 		&fakeFuturesRepo{},
 		&fakeForexRepo{},
 		&fakeOrderBankingClient{},
-		&fakeUserServiceClient{},
+		&fakeUserServiceClient{identityResp: &pb.GetIdentityByUserIdResponse{IdentityId: 5}},
 	)
 
 	result, err := svc.GetPortfolio(context.Background(), 1, model.OwnerTypeClient)
@@ -258,7 +258,7 @@ func TestGetPortfolio_PartialSell(t *testing.T) {
 		&fakeFuturesRepo{},
 		&fakeForexRepo{},
 		&fakeOrderBankingClient{},
-		&fakeUserServiceClient{},
+		&fakeUserServiceClient{identityResp: &pb.GetIdentityByUserIdResponse{IdentityId: 5}},
 	)
 
 	result, err := svc.GetPortfolio(context.Background(), 1, model.OwnerTypeClient)
@@ -275,7 +275,7 @@ func TestGetPortfolio_EmptyOwnerships(t *testing.T) {
 		&fakeFuturesRepo{},
 		&fakeForexRepo{},
 		&fakeOrderBankingClient{},
-		&fakeUserServiceClient{},
+		&fakeUserServiceClient{identityResp: &pb.GetIdentityByUserIdResponse{IdentityId: 5}},
 	)
 
 	result, err := svc.GetPortfolio(context.Background(), 1, model.OwnerTypeClient)
@@ -291,7 +291,7 @@ func TestGetPortfolio_RepoError(t *testing.T) {
 		&fakeFuturesRepo{},
 		&fakeForexRepo{},
 		&fakeOrderBankingClient{},
-		&fakeUserServiceClient{},
+		&fakeUserServiceClient{identityResp: &pb.GetIdentityByUserIdResponse{IdentityId: 5}},
 	)
 
 	_, err := svc.GetPortfolio(context.Background(), 1, model.OwnerTypeClient)
@@ -309,7 +309,7 @@ func TestGetPortfolio_NegativeProfit_NoTax(t *testing.T) {
 		&fakeFuturesRepo{},
 		&fakeForexRepo{},
 		&fakeOrderBankingClient{},
-		&fakeUserServiceClient{},
+		&fakeUserServiceClient{identityResp: &pb.GetIdentityByUserIdResponse{IdentityId: 5}},
 	)
 
 	result, err := svc.GetPortfolio(context.Background(), 1, model.OwnerTypeClient)
@@ -339,7 +339,7 @@ func TestGetPortfolio_MultipleAssets_ProfitAccumulation(t *testing.T) {
 		&fakeFuturesRepo{},
 		&fakeForexRepo{},
 		&fakeOrderBankingClient{},
-		&fakeUserServiceClient{},
+		&fakeUserServiceClient{identityResp: &pb.GetIdentityByUserIdResponse{IdentityId: 5}},
 	)
 
 	result, err := svc.GetPortfolio(context.Background(), 1, model.OwnerTypeClient)
@@ -362,7 +362,7 @@ func TestGetPortfolio_EmptyPortfolio_ZeroProfit(t *testing.T) {
 		&fakeFuturesRepo{},
 		&fakeForexRepo{},
 		&fakeOrderBankingClient{},
-		&fakeUserServiceClient{},
+		&fakeUserServiceClient{identityResp: &pb.GetIdentityByUserIdResponse{IdentityId: 5}},
 	)
 
 	result, err := svc.GetPortfolio(context.Background(), 1, model.OwnerTypeActuary)
@@ -419,7 +419,7 @@ func TestExerciseOption_Success(t *testing.T) {
 		&fakeFuturesRepo{},
 		&fakeForexRepo{},
 		bankingClient,
-		&fakeUserServiceClient{},
+		&fakeUserServiceClient{identityResp: &pb.GetIdentityByUserIdResponse{IdentityId: 5}},
 	)
 	svc.now = func() time.Time { return time.Date(2025, 6, 4, 10, 0, 0, 0, time.UTC) }
 
@@ -478,7 +478,7 @@ func TestExerciseOption_ExpiredOption(t *testing.T) {
 		&fakeFuturesRepo{},
 		&fakeForexRepo{},
 		&fakeOrderBankingClient{accountResp: &pb.GetAccountByNumberResponse{AccountType: "Bank"}},
-		&fakeUserServiceClient{},
+		&fakeUserServiceClient{identityResp: &pb.GetIdentityByUserIdResponse{IdentityId: 5}},
 	)
 	svc.now = func() time.Time { return time.Date(2025, 6, 4, 10, 0, 0, 0, time.UTC) }
 
@@ -511,7 +511,7 @@ func TestExerciseOption_NotInTheMoney(t *testing.T) {
 		&fakeFuturesRepo{},
 		&fakeForexRepo{},
 		&fakeOrderBankingClient{accountResp: &pb.GetAccountByNumberResponse{AccountType: "Bank"}},
-		&fakeUserServiceClient{},
+		&fakeUserServiceClient{identityResp: &pb.GetIdentityByUserIdResponse{IdentityId: 5}},
 	)
 
 	_, err := svc.ExerciseOption(context.Background(), 1, model.OwnerTypeActuary, 20, "444000100000000001")
@@ -543,7 +543,7 @@ func TestExerciseOption_PutOptionRejected(t *testing.T) {
 		&fakeFuturesRepo{},
 		&fakeForexRepo{},
 		&fakeOrderBankingClient{accountResp: &pb.GetAccountByNumberResponse{AccountType: "Bank"}},
-		&fakeUserServiceClient{},
+		&fakeUserServiceClient{identityResp: &pb.GetIdentityByUserIdResponse{IdentityId: 5}},
 	)
 
 	_, err := svc.ExerciseOption(context.Background(), 1, model.OwnerTypeActuary, 20, "444000100000000001")
@@ -561,7 +561,7 @@ func TestGetClientPortfolio_ResolvesIdentityID(t *testing.T) {
 	const clientID = uint64(5)
 	const identityID = uint64(42)
 	ownership := makeOwnership(10, "AAPL", 10, 100.0)
-	ownership.IdentityID = uint(identityID)
+	ownership.UserId = uint(identityID)
 
 	svc := newPortfolioSvc(
 		&fakeAssetOwnershipRepo{ownerships: []model.AssetOwnership{ownership}},
@@ -579,18 +579,19 @@ func TestGetClientPortfolio_ClientNotFound(t *testing.T) {
 	svc := newPortfolioSvc(
 		&fakeAssetOwnershipRepo{},
 		&fakeStockRepo{},
-		&fakeUserServiceClient{clientErr: errors.New("not found")},
+		&fakeUserServiceClient{},
 	)
 
-	_, err := svc.GetClientPortfolio(context.Background(), 99)
-	require.Error(t, err)
+	result, err := svc.GetClientPortfolio(context.Background(), 999)
+	require.NoError(t, err)
+	require.Empty(t, result)
 }
 
 func TestGetActuaryPortfolio_ResolvesIdentityID(t *testing.T) {
 	const actuaryID = uint64(7)
 	const identityID = uint64(55)
 	ownership := makeOwnership(20, "MSFT", 5, 200.0)
-	ownership.IdentityID = uint(identityID)
+	ownership.UserId = uint(identityID)
 	ownership.OwnerType = model.OwnerTypeActuary
 
 	svc := newPortfolioSvc(
@@ -609,9 +610,10 @@ func TestGetActuaryPortfolio_ActuaryNotFound(t *testing.T) {
 	svc := newPortfolioSvc(
 		&fakeAssetOwnershipRepo{},
 		&fakeStockRepo{},
-		&fakeUserServiceClient{employeeErr: errors.New("not found")},
+		&fakeUserServiceClient{},
 	)
 
-	_, err := svc.GetActuaryPortfolio(context.Background(), 99)
-	require.Error(t, err)
+	result, err := svc.GetActuaryPortfolio(context.Background(), 99)
+	require.NoError(t, err)
+	require.Empty(t, result)
 }

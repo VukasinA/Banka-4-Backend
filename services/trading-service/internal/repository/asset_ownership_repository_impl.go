@@ -18,10 +18,10 @@ func NewAssetOwnershipRepository(db *gorm.DB) AssetOwnershipRepository {
 	return &assetOwnershipRepository{db: db}
 }
 
-func (r *assetOwnershipRepository) FindByIdentity(ctx context.Context, identityID uint, ownerType model.OwnerType) ([]model.AssetOwnership, error) {
+func (r *assetOwnershipRepository) FindByUserId(ctx context.Context, userId uint, ownerType model.OwnerType) ([]model.AssetOwnership, error) {
 	var ownerships []model.AssetOwnership
 	if err := r.db.WithContext(ctx).
-		Where("identity_id = ? AND owner_type = ?", identityID, ownerType).
+		Where("user_id = ? AND owner_type = ?", userId, ownerType).
 		Preload("Asset").
 		Find(&ownerships).Error; err != nil {
 		return nil, err
@@ -41,7 +41,7 @@ func (r *assetOwnershipRepository) FindByID(ctx context.Context, id uint) (*mode
 func (r *assetOwnershipRepository) Upsert(ctx context.Context, ownership *model.AssetOwnership) error {
 	return r.db.WithContext(ctx).
 		Clauses(clause.OnConflict{
-			Columns:   []clause.Column{{Name: "identity_id"}, {Name: "owner_type"}, {Name: "asset_id"}},
+			Columns:   []clause.Column{{Name: "user_id"}, {Name: "owner_type"}, {Name: "asset_id"}},
 			DoUpdates: clause.AssignmentColumns([]string{"amount", "avg_buy_price_rsd", "updated_at"}),
 		}).
 		Create(ownership).Error

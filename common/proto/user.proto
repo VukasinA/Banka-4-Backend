@@ -5,17 +5,18 @@ package user.v1;
 option go_package = "common/pkg/pb;pb";
 
 service UserService {
-  rpc GetClientById(GetClientByIdRequest)           returns (GetClientByIdResponse);
-  rpc GetClientByUserId(GetClientByUserIdRequest)   returns (GetClientByIdResponse);
-  rpc GetEmployeeById(GetEmployeeByIdRequest)       returns (GetEmployeeByIdResponse);
-  rpc GetEmployeeByUserId(GetEmployeeByUserIdRequest) returns (GetEmployeeByIdResponse);
-  rpc GetAllClients(GetAllClientsRequest)           returns (GetAllClientsResponse);
-  rpc GetAllActuaries(GetAllActuariesRequest)       returns (GetAllActuariesResponse);
+  rpc GetClientById(GetClientByIdRequest)                 returns (GetClientByIdResponse);
+  rpc GetClientByIdentityId(GetClientByIdentityIdRequest)   returns (GetClientByIdResponse);
+  rpc GetEmployeeById(GetEmployeeByIdRequest)             returns (GetEmployeeByIdResponse);
+  rpc GetEmployeeByIdentityId(GetEmployeeByIdentityIdRequest) returns (GetEmployeeByIdResponse);
+  rpc GetAllClients(GetAllClientsRequest)                 returns (GetAllClientsResponse);
+  rpc GetAllActuaries(GetAllActuariesRequest)             returns (GetAllActuariesResponse);
+  rpc GetIdentityByUserId(GetIdentityByUserIdRequest) returns (GetIdentityByUserIdResponse);
 }
 
 
 message GetClientByIdRequest       { uint64 id      = 1; }
-message GetClientByUserIdRequest   { uint64 user_id = 1; }
+message GetClientByIdentityIdRequest   { uint64 identity_id = 1; }
 message GetClientByIdResponse {
   uint64 id          = 1;
   string email       = 2;
@@ -24,7 +25,7 @@ message GetClientByIdResponse {
 }
 
 message GetEmployeeByIdRequest     { uint64 id      = 1; }
-message GetEmployeeByUserIdRequest { uint64 user_id = 1; }
+message GetEmployeeByIdentityIdRequest { uint64 identity_id = 1; }
 message GetEmployeeByIdResponse {
   uint64 id            = 1;
   string email         = 2;
@@ -83,4 +84,13 @@ message GetAllActuariesResponse {
   int32                    page       = 3;
   int32                    page_size  = 4;
   int32                    total_pages = 5;
+}
+
+message GetIdentityByUserIdRequest {
+  uint64 user_id   = 1;
+  string user_type = 2;
+}
+
+message GetIdentityByUserIdResponse {
+  uint64 identity_id = 1;
 }

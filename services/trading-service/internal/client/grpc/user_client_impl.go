@@ -32,18 +32,18 @@ func (c *UserServiceClient) GetEmployeeById(ctx context.Context, id uint64) (*pb
 	return resp, nil
 }
 
-func (c *UserServiceClient) GetClientByUserId(ctx context.Context, userId uint64) (*pb.GetClientByIdResponse, error) {
-	resp, err := c.stub.GetClientByUserId(ctx, &pb.GetClientByUserIdRequest{UserId: userId})
+func (c *UserServiceClient) GetClientByIdentityId(ctx context.Context, identityId uint64) (*pb.GetClientByIdResponse, error) {
+	resp, err := c.stub.GetClientByIdentityId(ctx, &pb.GetClientByIdentityIdRequest{IdentityId: identityId})
 	if err != nil {
-		return nil, fmt.Errorf("user client GetClientByUserId: %w", err)
+		return nil, fmt.Errorf("user client GetClientByIdentityId: %w", err)
 	}
 	return resp, nil
 }
 
-func (c *UserServiceClient) GetEmployeeByUserId(ctx context.Context, userId uint64) (*pb.GetEmployeeByIdResponse, error) {
-	resp, err := c.stub.GetEmployeeByUserId(ctx, &pb.GetEmployeeByUserIdRequest{UserId: userId})
+func (c *UserServiceClient) GetEmployeeByIdentityId(ctx context.Context, identityId uint64) (*pb.GetEmployeeByIdResponse, error) {
+	resp, err := c.stub.GetEmployeeByIdentityId(ctx, &pb.GetEmployeeByIdentityIdRequest{IdentityId: identityId})
 	if err != nil {
-		return nil, fmt.Errorf("user client GetEmployeeByUserId: %w", err)
+		return nil, fmt.Errorf("user client GetEmployeeByIdentityId: %w", err)
 	}
 	return resp, nil
 }
@@ -64,6 +64,16 @@ func (c *UserServiceClient) GetAllActuaries(ctx context.Context, page, pageSize 
 	})
 	if err != nil {
 		return nil, fmt.Errorf("user client GetAllActuaries: %w", err)
+	}
+	return resp, nil
+}
+
+func (c *UserServiceClient) GetIdentityByUserId(ctx context.Context, userID uint64, userType string) (*pb.GetIdentityByUserIdResponse, error) {
+	resp, err := c.stub.GetIdentityByUserId(ctx, &pb.GetIdentityByUserIdRequest{
+		UserId: userID, UserType: userType,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("user client GetIdentityByUserId: %w", err)
 	}
 	return resp, nil
 }

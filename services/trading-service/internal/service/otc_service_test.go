@@ -23,11 +23,11 @@ func (f *fakeOTCUserClient) GetEmployeeById(_ context.Context, id uint64) (*pb.G
 	return &pb.GetEmployeeByIdResponse{Id: id, FullName: "Test Employee"}, nil
 }
 
-func (f *fakeOTCUserClient) GetClientByUserId(_ context.Context, id uint64) (*pb.GetClientByIdResponse, error) {
+func (f *fakeOTCUserClient) GetClientByIdentityId(_ context.Context, id uint64) (*pb.GetClientByIdResponse, error) {
 	return &pb.GetClientByIdResponse{Id: id, FullName: "Test Client"}, nil
 }
 
-func (f *fakeOTCUserClient) GetEmployeeByUserId(_ context.Context, id uint64) (*pb.GetEmployeeByIdResponse, error) {
+func (f *fakeOTCUserClient) GetEmployeeByIdentityId(_ context.Context, id uint64) (*pb.GetEmployeeByIdResponse, error) {
 	return &pb.GetEmployeeByIdResponse{Id: id, FullName: "Test Employee"}, nil
 }
 
@@ -39,12 +39,16 @@ func (f *fakeOTCUserClient) GetAllActuaries(_ context.Context, _, _ int32, _, _ 
 	return &pb.GetAllActuariesResponse{}, nil
 }
 
+func (f *fakeOTCUserClient) GetIdentityByUserId(_ context.Context, id uint64, _ string) (*pb.GetIdentityByUserIdResponse, error) {
+	return nil, nil
+}
+
 // --- Helpers ---
 
 func makeOwnershipForOTC(id, identityID, assetID uint, ownerType model.OwnerType, amount, reserved float64) *model.AssetOwnership {
 	return &model.AssetOwnership{
 		AssetOwnershipID: id,
-		IdentityID:       identityID,
+		UserId:           identityID,
 		OwnerType:        ownerType,
 		AssetID:          assetID,
 		Asset:            model.Asset{AssetID: assetID, AssetType: model.AssetTypeStock},
@@ -86,7 +90,7 @@ func TestOTCService_PublishAsset(t *testing.T) {
 			ownershipID: 1, identityID: 10, ownerType: model.OwnerTypeClient, amount: 10,
 		},
 		{
-			name: "ownership not found",
+			name:          "ownership not found",
 			ownershipRepo: &fakeAssetOwnershipRepo{byID: nil},
 			ownershipID:   99, identityID: 10, ownerType: model.OwnerTypeClient, amount: 5,
 			wantErr: true,
@@ -180,7 +184,7 @@ func TestOTCService_GetPublicOTCAssets(t *testing.T) {
 
 	ownership := model.AssetOwnership{
 		AssetOwnershipID: 1,
-		IdentityID:       10,
+		UserId:           10,
 		OwnerType:        model.OwnerTypeClient,
 		AssetID:          5,
 		Asset:            asset,
@@ -247,7 +251,7 @@ func TestOTCService_GetPublicOTCAssets_FieldMapping(t *testing.T) {
 	listing := model.Listing{ListingID: 1, AssetID: 5, Price: 150.0, Exchange: exchange}
 	ownership := model.AssetOwnership{
 		AssetOwnershipID: 1,
-		IdentityID:       10,
+		UserId:           10,
 		OwnerType:        model.OwnerTypeClient,
 		AssetID:          5,
 		Asset:            asset,

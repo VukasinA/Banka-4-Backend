@@ -115,7 +115,7 @@ func SetupRoutes(r *gin.Engine, healthHandler *handler.HealthHandler, taxHandler
 			client.GET("/:clientId/assets", portfolioHandler.GetClientPortfolio)
 			client.GET("/:clientId/assets/profit", portfolioHandler.GetClientPortfolioProfit)
 			client.GET("/:clientId/accumulated-tax", taxHandler.GetClientAccumulatedTax)
-			client.PATCH("/:clientId/assets/:ownershipId/publish", otcHandler.PublishAsset)
+			client.PATCH("/:clientId/assets/:ownershipId/publish", otcHandler.PublishAssetClient)
 
 		}
 
@@ -126,7 +126,7 @@ func SetupRoutes(r *gin.Engine, healthHandler *handler.HealthHandler, taxHandler
 			actuary.GET("/:actId/assets/profit", portfolioHandler.GetActuaryPortfolioProfit)
 			actuary.GET("/:actId/accumulated-tax", taxHandler.GetActuaryAccumulatedTax)
 			actuary.POST("/:actId/options/:assetId/exercise", portfolioHandler.ExerciseOption)
-			actuary.PATCH("/:actId/assets/:ownershipId/publish", otcHandler.PublishAsset)
+			actuary.PATCH("/:actId/assets/:ownershipId/publish", otcHandler.PublishAssetActuary)
 
 		}
 

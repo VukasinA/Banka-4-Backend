@@ -6,7 +6,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/RAF-SI-2025/Banka-4-Backend/common/pkg/auth"
 	pkgerrors "github.com/RAF-SI-2025/Banka-4-Backend/common/pkg/errors"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/dto"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/model"
@@ -21,7 +20,7 @@ func NewOTCHandler(service *service.OTCService) *OTCHandler {
 	return &OTCHandler{service: service}
 }
 
-// PublishAsset godoc
+// PublishAssetClient godoc
 // @Summary Publish assets for OTC trading
 // @Description Appends the number of assets the caller makes publicly visible on the OTC portal.
 // The amount replaces the current public amount. Must be non-negative and cannot exceed
@@ -38,10 +37,16 @@ func NewOTCHandler(service *service.OTCService) *OTCHandler {
 // @Failure 500 {object} errors.AppError
 // @Security BearerAuth
 // @Router /api/client/{clientId}/assets/{ownershipId}/publish [patch]
-func (h *OTCHandler) PublishAsset(c *gin.Context) {
+func (h *OTCHandler) PublishAssetClient(c *gin.Context) {
 	ownershipID, err := strconv.ParseUint(c.Param("ownershipId"), 10, 64)
 	if err != nil {
 		c.Error(pkgerrors.BadRequestErr("invalid asset ownership id"))
+		return
+	}
+
+	clientId, err := strconv.ParseUint(c.Param("clientId"), 10, 64)
+	if err != nil {
+		c.Error(pkgerrors.BadRequestErr("invalid client id"))
 		return
 	}
 
@@ -52,18 +57,56 @@ func (h *OTCHandler) PublishAsset(c *gin.Context) {
 	}
 	amount := req.Amount
 
-	authCtx := auth.GetAuth(c)
-	if authCtx == nil {
-		c.Error(pkgerrors.UnauthorizedErr("not authenticated"))
+	ownerType := model.OwnerTypeClient
+
+	if svcErr := h.service.PublishAsset(c.Request.Context(), uint(ownershipID), uint(clientId), ownerType, amount); svcErr != nil {
+		c.Error(svcErr)
 		return
 	}
 
-	ownerType := model.OwnerTypeClient
-	if authCtx.IdentityType == auth.IdentityEmployee {
-		ownerType = model.OwnerTypeActuary
+	c.Status(http.StatusNoContent)
+}
+
+// PublishAssetActuary godoc
+// @Summary Publish assets for OTC trading
+// @Description Appends the number of assets the caller makes publicly visible on the OTC portal.
+// The amount replaces the current public amount. Must be non-negative and cannot exceed
+// owned minus reserved. Accessible by the owning client or actuary only.
+// @Tags otc
+// @Accept json
+// @Param ownershipId path int true "Asset ownership ID"
+// @Param request body dto.PublishAssetRequest true "Amount to make public"
+// @Success 204
+// @Failure 400 {object} errors.AppError
+// @Failure 401 {object} errors.AppError
+// @Failure 403 {object} errors.AppError
+// @Failure 404 {object} errors.AppError
+// @Failure 500 {object} errors.AppError
+// @Security BearerAuth
+// @Router /api/actuary/{actuaryId}/assets/{ownershipId}/publish [patch]
+func (h *OTCHandler) PublishAssetActuary(c *gin.Context) {
+	ownershipID, err := strconv.ParseUint(c.Param("ownershipId"), 10, 64)
+	if err != nil {
+		c.Error(pkgerrors.BadRequestErr("invalid asset ownership id"))
+		return
 	}
 
-	if svcErr := h.service.PublishAsset(c.Request.Context(), uint(ownershipID), authCtx.IdentityID, ownerType, amount); svcErr != nil {
+	actuaryId, err := strconv.ParseUint(c.Param("actId"), 10, 64)
+	if err != nil {
+		c.Error(pkgerrors.BadRequestErr("invalid actuary id"))
+		return
+	}
+
+	var req dto.PublishAssetRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.Error(pkgerrors.BadRequestErr("invalid request body"))
+		return
+	}
+	amount := req.Amount
+
+	ownerType := model.OwnerTypeActuary
+
+	if svcErr := h.service.PublishAsset(c.Request.Context(), uint(ownershipID), uint(actuaryId), ownerType, amount); svcErr != nil {
 		c.Error(svcErr)
 		return
 	}

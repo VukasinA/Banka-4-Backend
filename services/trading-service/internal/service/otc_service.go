@@ -29,7 +29,7 @@ func NewOTCService(
 	}
 }
 
-func (s *OTCService) PublishAsset(ctx context.Context, ownershipID, identityID uint, ownerType model.OwnerType, amount float64) error {
+func (s *OTCService) PublishAsset(ctx context.Context, ownershipID, userId uint, ownerType model.OwnerType, amount float64) error {
 	ownership, err := s.ownershipRepo.FindByID(ctx, ownershipID)
 	if err != nil {
 		return errors.InternalErr(err)
@@ -41,7 +41,7 @@ func (s *OTCService) PublishAsset(ctx context.Context, ownershipID, identityID u
 		return errors.BadRequestErr("only stocks can be published for OTC trading")
 	}
 
-	if ownership.IdentityID != identityID || ownership.OwnerType != ownerType {
+	if ownership.UserId != userId || ownership.OwnerType != ownerType {
 		return errors.ForbiddenErr("you do not own this asset")
 	}
 
@@ -105,20 +105,12 @@ func (s *OTCService) GetPublicOTCAssets(ctx context.Context, page, pageSize int)
 
 		if o.OwnerType == model.OwnerTypeClient {
 
-			userResp, err := s.userClient.GetClientByUserId(ctx, uint64(o.IdentityID))
-			if err != nil {
-				return nil, 0, errors.BadRequestErr("Bad identity id or type")
-			}
-			clientResp, clientErr := s.userClient.GetClientById(ctx, uint64(userResp.Id))
+			clientResp, clientErr := s.userClient.GetClientById(ctx, uint64(o.UserId))
 			if clientResp != nil && clientErr == nil {
 				ownerName = clientResp.FullName
 			}
 		} else {
-			userResp, err := s.userClient.GetEmployeeByUserId(ctx, uint64(o.IdentityID))
-			if err != nil {
-				return nil, 0, errors.BadRequestErr("Bad identity id or type")
-			}
-			empResp, empErr := s.userClient.GetEmployeeById(ctx, uint64(userResp.Id))
+			empResp, empErr := s.userClient.GetEmployeeById(ctx, uint64(o.UserId))
 			if empResp != nil && empErr == nil {
 				ownerName = empResp.FullName
 			}

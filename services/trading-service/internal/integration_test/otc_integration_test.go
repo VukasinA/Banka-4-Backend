@@ -18,11 +18,11 @@ import (
 func seedAssetOwnership(t *testing.T, db *gorm.DB, identityID uint, ownerType model.OwnerType, assetID uint, amount float64) *model.AssetOwnership {
 	t.Helper()
 	o := &model.AssetOwnership{
-		IdentityID: identityID,
-		OwnerType:  ownerType,
-		AssetID:    assetID,
-		Amount:     amount,
-		UpdatedAt:  time.Now(),
+		UserId:    identityID,
+		OwnerType: ownerType,
+		AssetID:   assetID,
+		Amount:    amount,
+		UpdatedAt: time.Now(),
 	}
 	require.NoError(t, db.Create(o).Error)
 	return o
@@ -71,7 +71,7 @@ func TestOTCHandler_PublishAsset_ActuarySuccess(t *testing.T) {
 
 	ex := seedExchange(t, db, uniqueMIC(t))
 	listing := seedListing(t, db, uniqueTicker(t), ex.MicCode, model.AssetTypeStock, 50.0)
-	ownership := seedAssetOwnership(t, db, 200, model.OwnerTypeActuary, listing.AssetID, 15)
+	ownership := seedAssetOwnership(t, db, 20, model.OwnerTypeActuary, listing.AssetID, 15)
 
 	path := fmt.Sprintf("/api/actuary/20/assets/%d/publish", ownership.AssetOwnershipID)
 	rec := performRequest(t, router, http.MethodPatch, path, map[string]any{"amount": 3}, authHeaderForAgent(t))

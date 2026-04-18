@@ -65,27 +65,27 @@ func (x *GetClientByIdRequest) GetId() uint64 {
 	return 0
 }
 
-type GetClientByUserIdRequest struct {
+type GetClientByIdentityIdRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        uint64                 `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	IdentityId    uint64                 `protobuf:"varint,1,opt,name=identity_id,json=identityId,proto3" json:"identity_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *GetClientByUserIdRequest) Reset() {
-	*x = GetClientByUserIdRequest{}
+func (x *GetClientByIdentityIdRequest) Reset() {
+	*x = GetClientByIdentityIdRequest{}
 	mi := &file_common_proto_user_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *GetClientByUserIdRequest) String() string {
+func (x *GetClientByIdentityIdRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetClientByUserIdRequest) ProtoMessage() {}
+func (*GetClientByIdentityIdRequest) ProtoMessage() {}
 
-func (x *GetClientByUserIdRequest) ProtoReflect() protoreflect.Message {
+func (x *GetClientByIdentityIdRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_common_proto_user_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -97,14 +97,14 @@ func (x *GetClientByUserIdRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GetClientByUserIdRequest.ProtoReflect.Descriptor instead.
-func (*GetClientByUserIdRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use GetClientByIdentityIdRequest.ProtoReflect.Descriptor instead.
+func (*GetClientByIdentityIdRequest) Descriptor() ([]byte, []int) {
 	return file_common_proto_user_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *GetClientByUserIdRequest) GetUserId() uint64 {
+func (x *GetClientByIdentityIdRequest) GetIdentityId() uint64 {
 	if x != nil {
-		return x.UserId
+		return x.IdentityId
 	}
 	return 0
 }
@@ -221,27 +221,27 @@ func (x *GetEmployeeByIdRequest) GetId() uint64 {
 	return 0
 }
 
-type GetEmployeeByUserIdRequest struct {
+type GetEmployeeByIdentityIdRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        uint64                 `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	IdentityId    uint64                 `protobuf:"varint,1,opt,name=identity_id,json=identityId,proto3" json:"identity_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *GetEmployeeByUserIdRequest) Reset() {
-	*x = GetEmployeeByUserIdRequest{}
+func (x *GetEmployeeByIdentityIdRequest) Reset() {
+	*x = GetEmployeeByIdentityIdRequest{}
 	mi := &file_common_proto_user_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *GetEmployeeByUserIdRequest) String() string {
+func (x *GetEmployeeByIdentityIdRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetEmployeeByUserIdRequest) ProtoMessage() {}
+func (*GetEmployeeByIdentityIdRequest) ProtoMessage() {}
 
-func (x *GetEmployeeByUserIdRequest) ProtoReflect() protoreflect.Message {
+func (x *GetEmployeeByIdentityIdRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_common_proto_user_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -253,14 +253,14 @@ func (x *GetEmployeeByUserIdRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GetEmployeeByUserIdRequest.ProtoReflect.Descriptor instead.
-func (*GetEmployeeByUserIdRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use GetEmployeeByIdentityIdRequest.ProtoReflect.Descriptor instead.
+func (*GetEmployeeByIdentityIdRequest) Descriptor() ([]byte, []int) {
 	return file_common_proto_user_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *GetEmployeeByUserIdRequest) GetUserId() uint64 {
+func (x *GetEmployeeByIdentityIdRequest) GetIdentityId() uint64 {
 	if x != nil {
-		return x.UserId
+		return x.IdentityId
 	}
 	return 0
 }
@@ -797,15 +797,112 @@ func (x *GetAllActuariesResponse) GetTotalPages() int32 {
 	return 0
 }
 
+type GetIdentityByUserIdRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        uint64                 `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	UserType      string                 `protobuf:"bytes,2,opt,name=user_type,json=userType,proto3" json:"user_type,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetIdentityByUserIdRequest) Reset() {
+	*x = GetIdentityByUserIdRequest{}
+	mi := &file_common_proto_user_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetIdentityByUserIdRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetIdentityByUserIdRequest) ProtoMessage() {}
+
+func (x *GetIdentityByUserIdRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_common_proto_user_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetIdentityByUserIdRequest.ProtoReflect.Descriptor instead.
+func (*GetIdentityByUserIdRequest) Descriptor() ([]byte, []int) {
+	return file_common_proto_user_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *GetIdentityByUserIdRequest) GetUserId() uint64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+func (x *GetIdentityByUserIdRequest) GetUserType() string {
+	if x != nil {
+		return x.UserType
+	}
+	return ""
+}
+
+type GetIdentityByUserIdResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	IdentityId    uint64                 `protobuf:"varint,1,opt,name=identity_id,json=identityId,proto3" json:"identity_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetIdentityByUserIdResponse) Reset() {
+	*x = GetIdentityByUserIdResponse{}
+	mi := &file_common_proto_user_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetIdentityByUserIdResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetIdentityByUserIdResponse) ProtoMessage() {}
+
+func (x *GetIdentityByUserIdResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_common_proto_user_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetIdentityByUserIdResponse.ProtoReflect.Descriptor instead.
+func (*GetIdentityByUserIdResponse) Descriptor() ([]byte, []int) {
+	return file_common_proto_user_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *GetIdentityByUserIdResponse) GetIdentityId() uint64 {
+	if x != nil {
+		return x.IdentityId
+	}
+	return 0
+}
+
 var File_common_proto_user_proto protoreflect.FileDescriptor
 
 const file_common_proto_user_proto_rawDesc = "" +
 	"\n" +
 	"\x17common/proto/user.proto\x12\auser.v1\"&\n" +
 	"\x14GetClientByIdRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x04R\x02id\"3\n" +
-	"\x18GetClientByUserIdRequest\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\x04R\x06userId\"{\n" +
+	"\x02id\x18\x01 \x01(\x04R\x02id\"?\n" +
+	"\x1cGetClientByIdentityIdRequest\x12\x1f\n" +
+	"\videntity_id\x18\x01 \x01(\x04R\n" +
+	"identityId\"{\n" +
 	"\x15GetClientByIdResponse\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12\x1b\n" +
@@ -813,9 +910,10 @@ const file_common_proto_user_proto_rawDesc = "" +
 	"\videntity_id\x18\x04 \x01(\x04R\n" +
 	"identityId\"(\n" +
 	"\x16GetEmployeeByIdRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x04R\x02id\"5\n" +
-	"\x1aGetEmployeeByUserIdRequest\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\x04R\x06userId\"\xa2\x02\n" +
+	"\x02id\x18\x01 \x01(\x04R\x02id\"A\n" +
+	"\x1eGetEmployeeByIdentityIdRequest\x12\x1f\n" +
+	"\videntity_id\x18\x01 \x01(\x04R\n" +
+	"identityId\"\xa2\x02\n" +
 	"\x17GetEmployeeByIdResponse\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12\x1b\n" +
@@ -866,14 +964,21 @@ const file_common_proto_user_proto_rawDesc = "" +
 	"\x04page\x18\x03 \x01(\x05R\x04page\x12\x1b\n" +
 	"\tpage_size\x18\x04 \x01(\x05R\bpageSize\x12\x1f\n" +
 	"\vtotal_pages\x18\x05 \x01(\x05R\n" +
-	"totalPages2\x8f\x04\n" +
+	"totalPages\"R\n" +
+	"\x1aGetIdentityByUserIdRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\x04R\x06userId\x12\x1b\n" +
+	"\tuser_type\x18\x02 \x01(\tR\buserType\">\n" +
+	"\x1bGetIdentityByUserIdResponse\x12\x1f\n" +
+	"\videntity_id\x18\x01 \x01(\x04R\n" +
+	"identityId2\x81\x05\n" +
 	"\vUserService\x12N\n" +
-	"\rGetClientById\x12\x1d.user.v1.GetClientByIdRequest\x1a\x1e.user.v1.GetClientByIdResponse\x12V\n" +
-	"\x11GetClientByUserId\x12!.user.v1.GetClientByUserIdRequest\x1a\x1e.user.v1.GetClientByIdResponse\x12T\n" +
-	"\x0fGetEmployeeById\x12\x1f.user.v1.GetEmployeeByIdRequest\x1a .user.v1.GetEmployeeByIdResponse\x12\\\n" +
-	"\x13GetEmployeeByUserId\x12#.user.v1.GetEmployeeByUserIdRequest\x1a .user.v1.GetEmployeeByIdResponse\x12N\n" +
+	"\rGetClientById\x12\x1d.user.v1.GetClientByIdRequest\x1a\x1e.user.v1.GetClientByIdResponse\x12^\n" +
+	"\x15GetClientByIdentityId\x12%.user.v1.GetClientByIdentityIdRequest\x1a\x1e.user.v1.GetClientByIdResponse\x12T\n" +
+	"\x0fGetEmployeeById\x12\x1f.user.v1.GetEmployeeByIdRequest\x1a .user.v1.GetEmployeeByIdResponse\x12d\n" +
+	"\x17GetEmployeeByIdentityId\x12'.user.v1.GetEmployeeByIdentityIdRequest\x1a .user.v1.GetEmployeeByIdResponse\x12N\n" +
 	"\rGetAllClients\x12\x1d.user.v1.GetAllClientsRequest\x1a\x1e.user.v1.GetAllClientsResponse\x12T\n" +
-	"\x0fGetAllActuaries\x12\x1f.user.v1.GetAllActuariesRequest\x1a .user.v1.GetAllActuariesResponseB\x12Z\x10common/pkg/pb;pbb\x06proto3"
+	"\x0fGetAllActuaries\x12\x1f.user.v1.GetAllActuariesRequest\x1a .user.v1.GetAllActuariesResponse\x12`\n" +
+	"\x13GetIdentityByUserId\x12#.user.v1.GetIdentityByUserIdRequest\x1a$.user.v1.GetIdentityByUserIdResponseB\x12Z\x10common/pkg/pb;pbb\x06proto3"
 
 var (
 	file_common_proto_user_proto_rawDescOnce sync.Once
@@ -887,38 +992,42 @@ func file_common_proto_user_proto_rawDescGZIP() []byte {
 	return file_common_proto_user_proto_rawDescData
 }
 
-var file_common_proto_user_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_common_proto_user_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_common_proto_user_proto_goTypes = []any{
-	(*GetClientByIdRequest)(nil),       // 0: user.v1.GetClientByIdRequest
-	(*GetClientByUserIdRequest)(nil),   // 1: user.v1.GetClientByUserIdRequest
-	(*GetClientByIdResponse)(nil),      // 2: user.v1.GetClientByIdResponse
-	(*GetEmployeeByIdRequest)(nil),     // 3: user.v1.GetEmployeeByIdRequest
-	(*GetEmployeeByUserIdRequest)(nil), // 4: user.v1.GetEmployeeByUserIdRequest
-	(*GetEmployeeByIdResponse)(nil),    // 5: user.v1.GetEmployeeByIdResponse
-	(*GetAllClientsRequest)(nil),       // 6: user.v1.GetAllClientsRequest
-	(*ClientResponse)(nil),             // 7: user.v1.ClientResponse
-	(*GetAllClientsResponse)(nil),      // 8: user.v1.GetAllClientsResponse
-	(*GetAllActuariesRequest)(nil),     // 9: user.v1.GetAllActuariesRequest
-	(*ActuaryResponse)(nil),            // 10: user.v1.ActuaryResponse
-	(*GetAllActuariesResponse)(nil),    // 11: user.v1.GetAllActuariesResponse
+	(*GetClientByIdRequest)(nil),           // 0: user.v1.GetClientByIdRequest
+	(*GetClientByIdentityIdRequest)(nil),   // 1: user.v1.GetClientByIdentityIdRequest
+	(*GetClientByIdResponse)(nil),          // 2: user.v1.GetClientByIdResponse
+	(*GetEmployeeByIdRequest)(nil),         // 3: user.v1.GetEmployeeByIdRequest
+	(*GetEmployeeByIdentityIdRequest)(nil), // 4: user.v1.GetEmployeeByIdentityIdRequest
+	(*GetEmployeeByIdResponse)(nil),        // 5: user.v1.GetEmployeeByIdResponse
+	(*GetAllClientsRequest)(nil),           // 6: user.v1.GetAllClientsRequest
+	(*ClientResponse)(nil),                 // 7: user.v1.ClientResponse
+	(*GetAllClientsResponse)(nil),          // 8: user.v1.GetAllClientsResponse
+	(*GetAllActuariesRequest)(nil),         // 9: user.v1.GetAllActuariesRequest
+	(*ActuaryResponse)(nil),                // 10: user.v1.ActuaryResponse
+	(*GetAllActuariesResponse)(nil),        // 11: user.v1.GetAllActuariesResponse
+	(*GetIdentityByUserIdRequest)(nil),     // 12: user.v1.GetIdentityByUserIdRequest
+	(*GetIdentityByUserIdResponse)(nil),    // 13: user.v1.GetIdentityByUserIdResponse
 }
 var file_common_proto_user_proto_depIdxs = []int32{
 	7,  // 0: user.v1.GetAllClientsResponse.clients:type_name -> user.v1.ClientResponse
 	10, // 1: user.v1.GetAllActuariesResponse.actuaries:type_name -> user.v1.ActuaryResponse
 	0,  // 2: user.v1.UserService.GetClientById:input_type -> user.v1.GetClientByIdRequest
-	1,  // 3: user.v1.UserService.GetClientByUserId:input_type -> user.v1.GetClientByUserIdRequest
+	1,  // 3: user.v1.UserService.GetClientByIdentityId:input_type -> user.v1.GetClientByIdentityIdRequest
 	3,  // 4: user.v1.UserService.GetEmployeeById:input_type -> user.v1.GetEmployeeByIdRequest
-	4,  // 5: user.v1.UserService.GetEmployeeByUserId:input_type -> user.v1.GetEmployeeByUserIdRequest
+	4,  // 5: user.v1.UserService.GetEmployeeByIdentityId:input_type -> user.v1.GetEmployeeByIdentityIdRequest
 	6,  // 6: user.v1.UserService.GetAllClients:input_type -> user.v1.GetAllClientsRequest
 	9,  // 7: user.v1.UserService.GetAllActuaries:input_type -> user.v1.GetAllActuariesRequest
-	2,  // 8: user.v1.UserService.GetClientById:output_type -> user.v1.GetClientByIdResponse
-	2,  // 9: user.v1.UserService.GetClientByUserId:output_type -> user.v1.GetClientByIdResponse
-	5,  // 10: user.v1.UserService.GetEmployeeById:output_type -> user.v1.GetEmployeeByIdResponse
-	5,  // 11: user.v1.UserService.GetEmployeeByUserId:output_type -> user.v1.GetEmployeeByIdResponse
-	8,  // 12: user.v1.UserService.GetAllClients:output_type -> user.v1.GetAllClientsResponse
-	11, // 13: user.v1.UserService.GetAllActuaries:output_type -> user.v1.GetAllActuariesResponse
-	8,  // [8:14] is the sub-list for method output_type
-	2,  // [2:8] is the sub-list for method input_type
+	12, // 8: user.v1.UserService.GetIdentityByUserId:input_type -> user.v1.GetIdentityByUserIdRequest
+	2,  // 9: user.v1.UserService.GetClientById:output_type -> user.v1.GetClientByIdResponse
+	2,  // 10: user.v1.UserService.GetClientByIdentityId:output_type -> user.v1.GetClientByIdResponse
+	5,  // 11: user.v1.UserService.GetEmployeeById:output_type -> user.v1.GetEmployeeByIdResponse
+	5,  // 12: user.v1.UserService.GetEmployeeByIdentityId:output_type -> user.v1.GetEmployeeByIdResponse
+	8,  // 13: user.v1.UserService.GetAllClients:output_type -> user.v1.GetAllClientsResponse
+	11, // 14: user.v1.UserService.GetAllActuaries:output_type -> user.v1.GetAllActuariesResponse
+	13, // 15: user.v1.UserService.GetIdentityByUserId:output_type -> user.v1.GetIdentityByUserIdResponse
+	9,  // [9:16] is the sub-list for method output_type
+	2,  // [2:9] is the sub-list for method input_type
 	2,  // [2:2] is the sub-list for extension type_name
 	2,  // [2:2] is the sub-list for extension extendee
 	0,  // [0:2] is the sub-list for field type_name
@@ -935,7 +1044,7 @@ func file_common_proto_user_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_common_proto_user_proto_rawDesc), len(file_common_proto_user_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   12,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
