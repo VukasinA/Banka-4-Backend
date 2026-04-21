@@ -1021,6 +1021,10 @@ func (s *OrderService) recordProfitTax(ctx context.Context, order *model.Order, 
 	fillAmount := float64(fillQty) * order.ContractSize
 
 	AvgBuyPriceTradeCurrency, err := s.bankingClient.ConvertCurrency(ctx, ownership.AvgBuyPriceRSD, "RSD", tradeCurrency)
+	if err != nil {
+		return err
+	}
+
 	profitInTradeCurrency := (pricePerUnit - AvgBuyPriceTradeCurrency) * fillAmount
 	if profitInTradeCurrency <= 0 {
 		return nil
