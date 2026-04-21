@@ -19,7 +19,6 @@ var errTest = errors.New("repo error")
 
 type fakeAssetOwnershipRepo struct {
 	ownerships     []model.AssetOwnership
-	err            error
 	byID           *model.AssetOwnership
 	findByIDErr    error
 	allPublic      []model.AssetOwnership

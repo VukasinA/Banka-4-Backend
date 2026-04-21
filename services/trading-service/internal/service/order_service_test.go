@@ -585,19 +585,9 @@ func TestCreateOrder_Margin_WithInsufficientFunds_Forbidden(t *testing.T) {
 	listing := defaultListing()
 	exchange := defaultExchange()
 
-	svc := newTestOrderService(
-		&fakeOrderRepo{},
-		&fakeOrderTransactionRepo{},
-		&fakeExchangeRepo{exchange: exchange},
-		&fakeListingRepo{listing: listing},
-		&fakeUserServiceClient{identityResp: &pb.GetIdentityByUserIdResponse{IdentityId: 5}},
-		&fakeOrderBankingClient{accountResp: defaultAccountResp(10), hasActiveLoan: true},
-		&fakeTaxRecorder{},
-	)
-
 	accountResp := defaultAccountResp(10)
 	accountResp.AvailableBalance = 10
-	svc = newTestOrderService(
+	svc := newTestOrderService(
 		&fakeOrderRepo{},
 		&fakeOrderTransactionRepo{},
 		&fakeExchangeRepo{exchange: exchange},

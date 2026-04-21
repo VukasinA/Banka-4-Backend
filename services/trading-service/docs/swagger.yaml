@@ -262,6 +262,19 @@ definitions:
       volume:
         type: integer
     type: object
+  dto.ListOrdersResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/dto.OrderSummaryResponse'
+        type: array
+      page:
+        type: integer
+      page_size:
+        type: integer
+      total:
+        type: integer
+    type: object
   dto.ListTaxUsersResponse:
     properties:
       data:
@@ -397,6 +410,35 @@ definitions:
         type: string
       updated_at:
         type: string
+      user_id:
+        type: integer
+    type: object
+  dto.OrderSummaryResponse:
+    properties:
+      account_number:
+        type: string
+      asset_type:
+        $ref: '#/definitions/model.AssetType'
+      contract_size:
+        type: number
+      direction:
+        $ref: '#/definitions/model.OrderDirection'
+      listing_name:
+        type: string
+      order_id:
+        type: integer
+      order_type:
+        $ref: '#/definitions/model.OrderType'
+      owner_type:
+        $ref: '#/definitions/model.OwnerType'
+      price_per_unit:
+        type: number
+      quantity:
+        type: integer
+      remaining_portions:
+        type: integer
+      status:
+        $ref: '#/definitions/model.OrderStatus'
       user_id:
         type: integer
     type: object
@@ -580,6 +622,18 @@ definitions:
       timestamp:
         type: string
     type: object
+  model.AssetType:
+    enum:
+    - stock
+    - option
+    - future
+    - forexPair
+    type: string
+    x-enum-varnames:
+    - AssetTypeStock
+    - AssetTypeOption
+    - AssetTypeFuture
+    - AssetTypeForexPair
   model.OrderDirection:
     enum:
     - BUY
@@ -1524,6 +1578,48 @@ paths:
       tags:
       - listings
   /api/orders:
+    get:
+      description: Returns a paginated and filtered list of orders. Clients see only
+        their own orders, employees see all.
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size
+        in: query
+        name: page_size
+        type: integer
+      - description: Filter by status (PENDING, APPROVED, DECLINED)
+        in: query
+        name: status
+        type: string
+      - description: Filter by direction (BUY, SELL)
+        in: query
+        name: direction
+        type: string
+      - description: Filter by completion status
+        in: query
+        name: is_done
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ListOrdersResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errors.AppError'
+      summary: Get all orders
+      tags:
+      - orders
     post:
       consumes:
       - application/json

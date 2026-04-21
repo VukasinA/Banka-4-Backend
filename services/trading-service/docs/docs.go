@@ -1380,6 +1380,68 @@ const docTemplate = `{
             }
         },
         "/api/orders": {
+            "get": {
+                "description": "Returns a paginated and filtered list of orders. Clients see only their own orders, employees see all.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "orders"
+                ],
+                "summary": "Get all orders",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by status (PENDING, APPROVED, DECLINED)",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by direction (BUY, SELL)",
+                        "name": "direction",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filter by completion status",
+                        "name": "is_done",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ListOrdersResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    }
+                }
+            },
             "post": {
                 "description": "Creates a buy or sell order for a listing",
                 "consumes": [
@@ -2114,6 +2176,26 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.ListOrdersResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.OrderSummaryResponse"
+                    }
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "page_size": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
         "dto.ListTaxUsersResponse": {
             "type": "object",
             "properties": {
@@ -2317,6 +2399,50 @@ const docTemplate = `{
                 },
                 "updated_at": {
                     "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.OrderSummaryResponse": {
+            "type": "object",
+            "properties": {
+                "account_number": {
+                    "type": "string"
+                },
+                "asset_type": {
+                    "$ref": "#/definitions/model.AssetType"
+                },
+                "contract_size": {
+                    "type": "number"
+                },
+                "direction": {
+                    "$ref": "#/definitions/model.OrderDirection"
+                },
+                "listing_name": {
+                    "type": "string"
+                },
+                "order_id": {
+                    "type": "integer"
+                },
+                "order_type": {
+                    "$ref": "#/definitions/model.OrderType"
+                },
+                "owner_type": {
+                    "$ref": "#/definitions/model.OwnerType"
+                },
+                "price_per_unit": {
+                    "type": "number"
+                },
+                "quantity": {
+                    "type": "integer"
+                },
+                "remaining_portions": {
+                    "type": "integer"
+                },
+                "status": {
+                    "$ref": "#/definitions/model.OrderStatus"
                 },
                 "user_id": {
                     "type": "integer"
@@ -2598,6 +2724,21 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "model.AssetType": {
+            "type": "string",
+            "enum": [
+                "stock",
+                "option",
+                "future",
+                "forexPair"
+            ],
+            "x-enum-varnames": [
+                "AssetTypeStock",
+                "AssetTypeOption",
+                "AssetTypeFuture",
+                "AssetTypeForexPair"
+            ]
         },
         "model.OrderDirection": {
             "type": "string",
