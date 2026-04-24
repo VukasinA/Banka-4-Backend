@@ -176,3 +176,12 @@ func (r *accountRepository) FindByClientID(ctx context.Context, clientID uint) (
 
 	return accounts, nil
 }
+
+func (r *accountRepository) FindByAccountType(ctx context.Context, accountType model.AccountType) ([]model.Account, error) {
+	var accounts []model.Account
+	err := r.db.WithContext(ctx).
+		Where("account_type = ?", accountType).
+		Limit(1).
+		Find(&accounts).Error
+	return accounts, err
+}

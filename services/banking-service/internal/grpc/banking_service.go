@@ -5,6 +5,7 @@ import (
 	stderrors "errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -20,6 +21,7 @@ import (
 type BankingService struct {
 	pb.UnimplementedBankingServiceServer
 	accountRepo          repository.AccountRepository
+	accountService       *service.AccountService
 	loanRepo             repository.LoanRepository
 	paymentService       *service.PaymentService
 	transactionRepo      repository.TransactionRepository
@@ -31,6 +33,7 @@ func NewBankingService(
 	accountRepo repository.AccountRepository,
 	loanRepo repository.LoanRepository,
 	paymentService *service.PaymentService,
+	accountService *service.AccountService,
 	transactionRepo repository.TransactionRepository,
 	transactionProcessor *service.TransactionProcessor,
 	exchangeService *service.ExchangeService,
@@ -39,6 +42,7 @@ func NewBankingService(
 		accountRepo:          accountRepo,
 		loanRepo:             loanRepo,
 		paymentService:       paymentService,
+		accountService:       accountService,
 		transactionRepo:      transactionRepo,
 		transactionProcessor: transactionProcessor,
 		exchangeService:      exchangeService,
@@ -250,4 +254,44 @@ func mapTradeSettlementError(err error) error {
 	}
 
 	return status.Error(codes.Internal, err.Error())
+}
+
+func (s *BankingService) CreateFundAccount(ctx context.Context, req *pb.CreateFundAccountRequest) (*pb.CreateFundAccountResponse, error) {
+	fundName := strings.TrimSpace(req.GetFundName())
+	if fundName == "" {
+		return nil, status.Error(codes.InvalidArgument, "fund_name is required")
+	}
+	if req.GetManagerId() == 0 {
+		return nil, status.Error(codes.InvalidArgument, "manager_id is required")
+	}
+
+	// Find any bank-owned account to get the bank's ClientID
+	bankAccounts, err := s.accountRepo.FindByAccountType(ctx, model.AccountTypeBank)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to find bank accounts: %v", err)
+	}
+	if len(bankAccounts) == 0 {
+		return nil, status.Error(codes.NotFound, "no bank-owned account found")
+	}
+	bankClientID := bankAccounts[0].ClientID
+
+	expiresAt := time.Now().AddDate(100, 0, 0) // fund accounts don't expire
+
+	account, err := s.accountService.Create(ctx, dto.CreateAccountRequest{
+		Name:           fundName,
+		ClientID:       bankClientID,
+		EmployeeID:     uint(req.GetManagerId()),
+		AccountType:    model.AccountTypeBank,
+		AccountKind:    model.AccountKindInternal,
+		InitialBalance: 0,
+		ExpiresAt:      expiresAt,
+		GenerateCard:   false,
+	})
+	if err != nil {
+		return nil, errors.MapGrpcToHttpError(err)
+	}
+
+	return &pb.CreateFundAccountResponse{
+		AccountNumber: account.AccountNumber,
+	}, nil
 }
