@@ -265,7 +265,6 @@ func (s *BankingService) CreateFundAccount(ctx context.Context, req *pb.CreateFu
 		return nil, status.Error(codes.InvalidArgument, "manager_id is required")
 	}
 
-	// Find any bank-owned account to get the bank's ClientID
 	bankAccounts, err := s.accountRepo.FindByAccountType(ctx, model.AccountTypeBank)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to find bank accounts: %v", err)
@@ -275,7 +274,7 @@ func (s *BankingService) CreateFundAccount(ctx context.Context, req *pb.CreateFu
 	}
 	bankClientID := bankAccounts[0].ClientID
 
-	expiresAt := time.Now().AddDate(100, 0, 0) // fund accounts don't expire
+	expiresAt := time.Now().AddDate(100, 0, 0)
 
 	account, err := s.accountService.Create(ctx, dto.CreateAccountRequest{
 		Name:           fundName,

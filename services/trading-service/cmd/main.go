@@ -150,6 +150,7 @@ func main() {
 		fx.Invoke(func(db *gorm.DB) error {
 			return seed.SeedFuturesContracts(db)
 		}),
+		fx.Invoke(func(db *gorm.DB) error { return seed.InvestmentFunds(db) }),
 		fx.Invoke(func(db *gorm.DB) error {
 			return seed.AccumulatedTax(db)
 		}),
