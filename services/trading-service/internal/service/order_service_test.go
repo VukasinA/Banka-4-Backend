@@ -224,7 +224,9 @@ func (c *fakeOrderBankingClient) GetAccountCurrency(_ context.Context, _ string)
 	}
 	return c.accountCurrency, nil
 }
-
+func (f *fakeOrderBankingClient) CreateFundAccount(ctx context.Context, fundName string, managerID uint64) (string, error) {
+	return "", nil
+}
 func (c *fakeOrderBankingClient) GetAccountByNumber(_ context.Context, _ string) (*pb.GetAccountByNumberResponse, error) {
 	return c.accountResp, c.accountErr
 }
