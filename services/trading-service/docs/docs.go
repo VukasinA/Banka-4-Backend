@@ -2073,9 +2073,6 @@ const docTemplate = `{
                 "fund_id": {
                     "type": "integer"
                 },
-                "liquid_assets": {
-                    "type": "number"
-                },
                 "manager_id": {
                     "type": "integer"
                 },
