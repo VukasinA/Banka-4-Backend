@@ -163,7 +163,7 @@ func newTestFundService(
 	listingRepo *fakeListingRepo,
 	bankingClient *fakeFundBankingClient,
 ) *InvestmentFundService {
-	return NewInvestmentFundService(fundRepo, ownershipRepo, listingRepo, bankingClient)
+	return NewInvestmentFundService(fundRepo, &fakePositionRepo{}, &fakeInvestmentRepo{}, ownershipRepo, listingRepo, bankingClient)
 }
 
 // ── CreateFund tests ──────────────────────────────────────────────
@@ -258,7 +258,7 @@ func TestGetAllFunds_Success(t *testing.T) {
 		Description:         "IT sector fund",
 		MinimumContribution: 1000.0,
 		ManagerID:           25,
-		LiquidAssets:        500.0,
+		AccountNumber:       "444000000000000001",
 		Positions: []model.ClientFundPosition{
 			{TotalInvestedAmount: 300.0},
 		},
@@ -269,7 +269,10 @@ func TestGetAllFunds_Success(t *testing.T) {
 	fundRepo := &fakeFundRepo{findAllResult: []model.InvestmentFund{fund}, findAllTotal: 1}
 	ownershipRepo := &fakeAssetOwnershipRepo{ownerships: []model.AssetOwnership{ownership}}
 	listingRepo := &fakeListingRepo{byAssetIDs: []model.Listing{listing}}
-	svc := newTestFundService(fundRepo, ownershipRepo, listingRepo, &fakeFundBankingClient{})
+	bankingClient := &fakeFundBankingClient{
+		getAccountResult: &pb.GetAccountByNumberResponse{AvailableBalance: 500.0},
+	}
+	svc := newTestFundService(fundRepo, ownershipRepo, listingRepo, bankingClient)
 
 	resp, err := svc.GetAllFunds(fundSupervisorCtx(), dto.ListFundsQuery{Page: 1, PageSize: 10})
 
@@ -309,7 +312,7 @@ func TestGetAllFunds_RepoError(t *testing.T) {
 }
 
 func TestGetAllFunds_OwnershipRepoError(t *testing.T) {
-	fund := model.InvestmentFund{FundID: 1, Name: "Fund", LiquidAssets: 100.0}
+	fund := model.InvestmentFund{FundID: 1, Name: "Fund", AccountNumber: "444000000000000001"}
 	fundRepo := &fakeFundRepo{findAllResult: []model.InvestmentFund{fund}, findAllTotal: 1}
 	ownershipRepo := &fakeAssetOwnershipRepo{findErr: errors.New("db error")}
 	svc := newTestFundService(fundRepo, ownershipRepo, &fakeListingRepo{}, &fakeFundBankingClient{})
@@ -323,11 +326,11 @@ func TestGetAllFunds_OwnershipRepoError(t *testing.T) {
 
 func TestGetActuaryFunds_Success(t *testing.T) {
 	fund := model.InvestmentFund{
-		FundID:       1,
-		Name:         "Alpha Growth Fund",
-		Description:  "IT sector fund",
-		ManagerID:    25,
-		LiquidAssets: 1500000.0,
+		FundID:        1,
+		Name:          "Alpha Growth Fund",
+		Description:   "IT sector fund",
+		ManagerID:     25,
+		AccountNumber: "444000000000000001",
 	}
 	ownership := model.AssetOwnership{AssetID: 5, Amount: 10.0}
 	listing := model.Listing{AssetID: 5, Price: 50000.0}
@@ -335,7 +338,10 @@ func TestGetActuaryFunds_Success(t *testing.T) {
 	fundRepo := &fakeFundRepo{findByManagerResult: []model.InvestmentFund{fund}}
 	ownershipRepo := &fakeAssetOwnershipRepo{ownerships: []model.AssetOwnership{ownership}}
 	listingRepo := &fakeListingRepo{byAssetIDs: []model.Listing{listing}}
-	svc := newTestFundService(fundRepo, ownershipRepo, listingRepo, &fakeFundBankingClient{})
+	bankingClient := &fakeFundBankingClient{
+		getAccountResult: &pb.GetAccountByNumberResponse{AvailableBalance: 1500000.0},
+	}
+	svc := newTestFundService(fundRepo, ownershipRepo, listingRepo, bankingClient)
 
 	resp, err := svc.GetActuaryFunds(fundSupervisorCtx(), 25)
 

@@ -35,8 +35,8 @@ type ActuaryFundResponse struct {
 	AccountNumber string  `json:"account_number"`
 }
 
-func ToFundSummaryResponse(fund model.InvestmentFund, securitiesValue float64) FundSummaryResponse {
-	fundValue := fund.LiquidAssets + securitiesValue
+func ToFundSummaryResponse(fund model.InvestmentFund, securitiesValue, liquidAssets float64) FundSummaryResponse {
+	fundValue := liquidAssets + securitiesValue
 	var totalInvested float64
 	for _, pos := range fund.Positions {
 		totalInvested += pos.TotalInvestedAmount
@@ -50,20 +50,20 @@ func ToFundSummaryResponse(fund model.InvestmentFund, securitiesValue float64) F
 		ManagerID:           fund.ManagerID,
 		FundValue:           fundValue,
 		Profit:              profit,
-		LiquidAssets:        fund.LiquidAssets,
+		LiquidAssets:        liquidAssets,
 		AccountNumber:       fund.AccountNumber,
 		CreatedAt:           fund.CreatedAt,
 	}
 }
 
-func ToActuaryFundResponse(fund model.InvestmentFund, securitiesValue float64) ActuaryFundResponse {
-	fundValue := fund.LiquidAssets + securitiesValue
+func ToActuaryFundResponse(fund model.InvestmentFund, securitiesValue, liquidAssets float64) ActuaryFundResponse {
+	fundValue := liquidAssets + securitiesValue
 	return ActuaryFundResponse{
 		FundID:        fund.FundID,
 		Name:          fund.Name,
 		Description:   fund.Description,
 		FundValue:     fundValue,
-		LiquidAssets:  fund.LiquidAssets,
+		LiquidAssets:  liquidAssets,
 		AccountNumber: fund.AccountNumber,
 	}
 }

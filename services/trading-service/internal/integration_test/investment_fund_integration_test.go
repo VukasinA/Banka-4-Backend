@@ -156,7 +156,7 @@ func TestGetAllFunds_Success(t *testing.T) {
 	seedInvestmentFund(t, db, fmt.Sprintf("Discovery Fund %d", uniqueCounter.Add(1)), 10)
 
 	auth := authHeaderForSupervisor(t)
-	rec := performRequest(t, router, http.MethodGet, "/api/funds", nil, auth)
+	rec := performRequest(t, router, http.MethodGet, "/api/investment-funds", nil, auth)
 	requireStatus(t, rec, http.StatusOK)
 
 	resp := decodeResponse[map[string]any](t, rec)
@@ -177,7 +177,7 @@ func TestGetAllFunds_Pagination(t *testing.T) {
 	}
 
 	auth := authHeaderForSupervisor(t)
-	rec := performRequest(t, router, http.MethodGet, "/api/funds?page=1&page_size=2", nil, auth)
+	rec := performRequest(t, router, http.MethodGet, "/api/investment-funds?page=1&page_size=2", nil, auth)
 	requireStatus(t, rec, http.StatusOK)
 
 	type listResp struct {
@@ -202,7 +202,7 @@ func TestGetAllFunds_NameFilter(t *testing.T) {
 	seedInvestmentFund(t, db, fmt.Sprintf("OtherFund%d", uniqueCounter.Add(1)), 10)
 
 	auth := authHeaderForSupervisor(t)
-	rec := performRequest(t, router, http.MethodGet, "/api/funds?name="+unique, nil, auth)
+	rec := performRequest(t, router, http.MethodGet, "/api/investment-funds?name="+unique, nil, auth)
 	requireStatus(t, rec, http.StatusOK)
 
 	type listResp struct {
@@ -221,7 +221,7 @@ func TestGetAllFunds_AccessibleToAgent(t *testing.T) {
 	router, _ := setupTestRouter(t, db)
 
 	auth := authHeaderForAgent(t)
-	rec := performRequest(t, router, http.MethodGet, "/api/funds", nil, auth)
+	rec := performRequest(t, router, http.MethodGet, "/api/investment-funds", nil, auth)
 	requireStatus(t, rec, http.StatusOK)
 }
 
@@ -231,7 +231,7 @@ func TestGetAllFunds_AccessibleToClient(t *testing.T) {
 	router, _ := setupTestRouter(t, db)
 
 	auth := authHeaderForClient(t, 1, 1)
-	rec := performRequest(t, router, http.MethodGet, "/api/funds", nil, auth)
+	rec := performRequest(t, router, http.MethodGet, "/api/investment-funds", nil, auth)
 	requireStatus(t, rec, http.StatusOK)
 }
 
@@ -240,7 +240,7 @@ func TestGetAllFunds_Unauthorized(t *testing.T) {
 	db := setupTestDB(t)
 	router, _ := setupTestRouter(t, db)
 
-	rec := performRequest(t, router, http.MethodGet, "/api/funds", nil, "")
+	rec := performRequest(t, router, http.MethodGet, "/api/investment-funds", nil, "")
 	require.NotEqual(t, http.StatusOK, rec.Code)
 }
 
@@ -252,7 +252,7 @@ func TestGetAllFunds_FundValueAndProfitPresent(t *testing.T) {
 	seedInvestmentFund(t, db, fmt.Sprintf("ValueFund%d", uniqueCounter.Add(1)), 10)
 
 	auth := authHeaderForSupervisor(t)
-	rec := performRequest(t, router, http.MethodGet, "/api/funds", nil, auth)
+	rec := performRequest(t, router, http.MethodGet, "/api/investment-funds", nil, auth)
 	requireStatus(t, rec, http.StatusOK)
 
 	type listResp struct {

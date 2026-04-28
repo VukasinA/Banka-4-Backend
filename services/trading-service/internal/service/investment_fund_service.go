@@ -21,7 +21,7 @@ type InvestmentFundService struct {
 	fundRepo       repository.InvestmentFundRepository
 	positionRepo   repository.ClientFundPositionRepository
 	investmentRepo repository.ClientFundInvestmentRepository
-  ownershipRepo  repository.AssetOwnershipRepository
+	ownershipRepo  repository.AssetOwnershipRepository
 	listingRepo    repository.ListingRepository
 	bankingClient  client.BankingClient
 	now            func() time.Time
@@ -31,17 +31,18 @@ func NewInvestmentFundService(
 	fundRepo repository.InvestmentFundRepository,
 	positionRepo repository.ClientFundPositionRepository,
 	investmentRepo repository.ClientFundInvestmentRepository,
-  ownershipRepo repository.AssetOwnershipRepository,
+	ownershipRepo repository.AssetOwnershipRepository,
 	listingRepo repository.ListingRepository,
 	bankingClient client.BankingClient,
 ) *InvestmentFundService {
 	return &InvestmentFundService{
-		fundRepo:      fundRepo,
-    positionRepo:   positionRepo,
+		fundRepo:       fundRepo,
+		positionRepo:   positionRepo,
 		investmentRepo: investmentRepo,
-		ownershipRepo: ownershipRepo,
-		listingRepo:   listingRepo,
-		bankingClient: bankingClient,
+		ownershipRepo:  ownershipRepo,
+		listingRepo:    listingRepo,
+		bankingClient:  bankingClient,
+		now:            time.Now,
 	}
 }
 
@@ -76,6 +77,17 @@ func (s *InvestmentFundService) sumSecuritiesValue(ctx context.Context, fundID u
 	return total, nil
 }
 
+func (s *InvestmentFundService) getLiquidAssets(ctx context.Context, accountNumber string) (float64, error) {
+	resp, err := s.bankingClient.GetAccountByNumber(ctx, accountNumber)
+	if err != nil {
+		return 0, err
+	}
+	if resp == nil {
+		return 0, nil
+	}
+	return resp.AvailableBalance, nil
+}
+
 func (s *InvestmentFundService) GetAllFunds(ctx context.Context, query dto.ListFundsQuery) (*dto.ListFundsResponse, error) {
 	funds, total, err := s.fundRepo.FindAll(ctx, query.Name, query.SortBy, query.SortDir, query.Page, query.PageSize)
 	if err != nil {
@@ -88,7 +100,11 @@ func (s *InvestmentFundService) GetAllFunds(ctx context.Context, query dto.ListF
 		if err != nil {
 			return nil, commonErrors.InternalErr(err)
 		}
-		result[i] = dto.ToFundSummaryResponse(fund, secVal)
+		liquidAssets, err := s.getLiquidAssets(ctx, fund.AccountNumber)
+		if err != nil {
+			return nil, commonErrors.InternalErr(err)
+		}
+		result[i] = dto.ToFundSummaryResponse(fund, secVal, liquidAssets)
 	}
 
 	return &dto.ListFundsResponse{
@@ -111,7 +127,11 @@ func (s *InvestmentFundService) GetActuaryFunds(ctx context.Context, managerID u
 		if err != nil {
 			return nil, commonErrors.InternalErr(err)
 		}
-		result[i] = dto.ToActuaryFundResponse(fund, secVal)
+		liquidAssets, err := s.getLiquidAssets(ctx, fund.AccountNumber)
+		if err != nil {
+			return nil, commonErrors.InternalErr(err)
+		}
+		result[i] = dto.ToActuaryFundResponse(fund, secVal, liquidAssets)
 	}
 
 	return result, nil

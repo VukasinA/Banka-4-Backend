@@ -112,6 +112,15 @@ func SetupRoutes(r *gin.Engine, healthHandler *handler.HealthHandler, taxHandler
 		funds := api.Group("/investment-funds")
 		funds.Use(authMw, auth.RequirePermission(permission.Trading))
 		{
+			// Supervisori, agenti i klijenti mogu da vide sve fondove
+			funds.GET("",
+				auth.AnyOf(
+					middleware.RequireSupervisor(userClient),
+					middleware.RequireAgent(userClient),
+					auth.RequireIdentityType(auth.IdentityClient),
+				),
+				fundHandler.GetAllFunds,
+			)
 			// Samo supervisor može da kreira fond
 			funds.POST("",
 				auth.RequireIdentityType(auth.IdentityEmployee),
@@ -128,13 +137,7 @@ func SetupRoutes(r *gin.Engine, healthHandler *handler.HealthHandler, taxHandler
 			)
 		}
 
-		allFunds := api.Group("/funds")
-		allFunds.Use(authMw, auth.RequirePermission(permission.Trading))
-		allFunds.Use(auth.AnyOf(middleware.RequireSupervisor(userClient), middleware.RequireAgent(userClient), auth.RequireIdentityType(auth.IdentityClient)))
-		{
-			allFunds.GET("", fundHandler.GetAllFunds)
-		}
-    
+
 		client := api.Group("/client")
 		client.Use(authMw, auth.RequirePermission(permission.Trading), auth.RequireClientSelf("clientId", true))
 		{
