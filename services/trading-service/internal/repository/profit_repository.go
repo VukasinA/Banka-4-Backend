@@ -8,5 +8,5 @@ import (
 
 type ProfitRepository interface {
 	GetAllInvestmentFunds(ctx context.Context) ([]model.InvestmentFund, error)
-	GetAllActuaries(ctx context.Context) ([]model.Actuary, error)
+	GetProfitByUserIDs(ctx context.Context, userIDs []uint64) (map[uint64]float64, error)
 }

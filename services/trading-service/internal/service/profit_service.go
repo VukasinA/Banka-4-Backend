@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"strings"
 
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/client"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/dto"
@@ -14,67 +13,70 @@ type ProfitService struct {
 	userClient client.UserServiceClient
 }
 
-func NewProfitService(repo repository.ProfitRepository, userClient client.UserServiceClient) *ProfitService {
+func NewProfitService(
+	repo repository.ProfitRepository,
+	userClient client.UserServiceClient,
+) *ProfitService {
 	return &ProfitService{
 		repo:       repo,
 		userClient: userClient,
 	}
 }
-func (s *ProfitService) GetActuaryProfits(ctx context.Context) ([]dto.ActuaryProfitResponse, error) {
+func (s *ProfitService) GetActuaryProfits(
+	ctx context.Context,
+	page, pageSize int32,
+	firstName, lastName string,
+) ([]dto.ActuaryProfitResponse, error) {
 
-	actuaries, err := s.repo.GetAllActuaries(ctx)
+	// 1. user-service (identitet)
+	resp, err := s.userClient.GetAllActuaries(ctx, page, pageSize, firstName, lastName)
 	if err != nil {
 		return nil, err
 	}
 
-	var result []dto.ActuaryProfitResponse
+	// 2. izvuci IDs
+	ids := make([]uint64, 0, len(resp.Actuaries))
+	for _, a := range resp.Actuaries {
+		ids = append(ids, a.Id)
+	}
 
-	for _, a := range actuaries {
+	// 3. profit iz trading DB
+	profitMap, err := s.repo.GetProfitByUserIDs(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
 
-		// user-service call per actuary
-		emp, err := s.userClient.GetEmployeeById(ctx, uint64(a.EmployeeID))
-		if err != nil {
-			continue // ili log
-		}
+	result := make([]dto.ActuaryProfitResponse, 0, len(resp.Actuaries))
 
-		nameParts := strings.Split(emp.FullName, " ")
+	for _, a := range resp.Actuaries {
 
-		first := ""
-		last := ""
-		if len(nameParts) > 0 {
-			first = nameParts[0]
-		}
-		if len(nameParts) > 1 {
-			last = nameParts[1]
-		}
-
-		role := "agent"
-		if emp.IsSupervisor {
-			role = "supervisor"
-		}
+		profit := profitMap[a.Id]
 
 		result = append(result, dto.ActuaryProfitResponse{
-			FirstName: first,
-			LastName:  last,
-			Role:      role,
-			ProfitRSD: a.ProfitRSD, // ← iz trading baze, NE user service
+			FirstName: a.FirstName,
+			LastName:  a.LastName,
+			Role:      "supervisor",
+			ProfitRSD: profit,
 		})
 	}
 
 	return result, nil
 }
-func (s *ProfitService) GetFundPositions(ctx context.Context) ([]dto.FundPositionResponse, error) {
+func (s *ProfitService) GetFundPositions(
+	ctx context.Context,
+) ([]dto.FundPositionResponse, error) {
 
 	funds, err := s.repo.GetAllInvestmentFunds(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	var result []dto.FundPositionResponse
+	result := make([]dto.FundPositionResponse, 0, len(funds))
 
 	for _, f := range funds {
 
-		total := 0.0
+		// sum invested amounts
+		var total float64
 		for _, p := range f.Positions {
 			total += p.TotalInvestedAmount
 		}
@@ -84,9 +86,7 @@ func (s *ProfitService) GetFundPositions(ctx context.Context) ([]dto.FundPositio
 		profit := bankValue * 0.2
 
 		managerName := ""
-
-		manager, err := s.userClient.GetEmployeeById(ctx, uint64(f.ManagerID))
-		if err == nil {
+		if manager, err := s.userClient.GetEmployeeById(ctx, uint64(f.ManagerID)); err == nil {
 			managerName = manager.FullName
 		}
 

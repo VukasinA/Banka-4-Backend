@@ -19,14 +19,13 @@ type MockProfitRepo struct {
 	mock.Mock
 }
 
-func (m *MockProfitRepo) GetAllActuaries(ctx context.Context) ([]model.Actuary, error) {
-	args := m.Called(ctx)
-	return args.Get(0).([]model.Actuary), args.Error(1)
-}
-
 func (m *MockProfitRepo) GetAllInvestmentFunds(ctx context.Context) ([]model.InvestmentFund, error) {
 	args := m.Called(ctx)
 	return args.Get(0).([]model.InvestmentFund), args.Error(1)
+}
+func (m *MockProfitRepo) GetProfitByUserIDs(ctx context.Context, userIDs []uint64) (map[uint64]float64, error) {
+	args := m.Called(ctx, userIDs)
+	return args.Get(0).(map[uint64]float64), args.Error(1)
 }
 
 //
@@ -84,26 +83,39 @@ func TestGetActuaryProfits(t *testing.T) {
 
 	service := NewProfitService(repo, userClient)
 
-	repo.On("GetAllActuaries", ctx).Return([]model.Actuary{
-		{
-			EmployeeID: 1,
-			ProfitRSD:  1000,
+	// 1. user-service response
+	userClient.On(
+		"GetAllActuaries",
+		ctx,
+		int32(1),
+		int32(10),
+		"",
+		"",
+	).Return(&pb.GetAllActuariesResponse{
+		Actuaries: []*pb.ActuaryResponse{
+			{
+				Id:        1,
+				FirstName: "Marko",
+				LastName:  "Markovic",
+			},
 		},
 	}, nil)
 
-	userClient.On("GetEmployeeById", ctx, uint64(1)).Return(&pb.GetEmployeeByIdResponse{
-		FullName:     "Marko Markovic",
-		IsSupervisor: true,
-	}, nil)
+	// 2. repo profit map
+	repo.On("GetProfitByUserIDs", ctx, []uint64{1}).
+		Return(map[uint64]float64{
+			1: 1000,
+		}, nil)
 
-	result, err := service.GetActuaryProfits(ctx)
+	// 3. call service
+	result, err := service.GetActuaryProfits(ctx, 1, 10, "", "")
 
+	// 4. assertions
 	assert.NoError(t, err)
 	assert.Len(t, result, 1)
 
 	assert.Equal(t, "Marko", result[0].FirstName)
 	assert.Equal(t, "Markovic", result[0].LastName)
-	assert.Equal(t, "supervisor", result[0].Role)
 	assert.Equal(t, float64(1000), result[0].ProfitRSD)
 }
 
@@ -130,18 +142,15 @@ func TestGetFundPositions(t *testing.T) {
 		},
 	}, nil)
 
-	userClient.On("GetEmployeeById", ctx, uint64(10)).Return(&pb.GetEmployeeByIdResponse{
-		FullName: "Ana Anic",
-	}, nil)
+	userClient.On("GetEmployeeById", ctx, uint64(10)).
+		Return(&pb.GetEmployeeByIdResponse{
+			FullName: "Ana Anic",
+		}, nil)
 
 	result, err := service.GetFundPositions(ctx)
 
 	assert.NoError(t, err)
 	assert.Len(t, result, 1)
-
-	// total = 3000
-	// bank 10% = 300
-	// profit = 60
 
 	assert.Equal(t, "Tech Fund", result[0].FundName)
 	assert.Equal(t, "Ana Anic", result[0].ManagerName)
