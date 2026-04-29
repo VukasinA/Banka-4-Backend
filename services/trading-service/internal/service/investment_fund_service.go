@@ -65,14 +65,22 @@ func (s *InvestmentFundService) sumSecuritiesValue(ctx context.Context, fundID u
 		return 0, err
 	}
 
-	priceByAsset := make(map[uint]float64, len(listings))
+	priceInRSDByAsset := make(map[uint]float64, len(listings))
 	for _, l := range listings {
-		priceByAsset[l.AssetID] = l.Price
+		currency := "RSD"
+		if l.Exchange != nil && l.Exchange.Currency != "" {
+			currency = l.Exchange.Currency
+		}
+		priceRSD, err := s.bankingClient.ConvertCurrency(ctx, l.Price, currency, "RSD")
+		if err != nil {
+			return 0, err
+		}
+		priceInRSDByAsset[l.AssetID] = priceRSD
 	}
 
 	var total float64
 	for _, o := range ownerships {
-		total += o.Amount * priceByAsset[o.AssetID]
+		total += o.Amount * priceInRSDByAsset[o.AssetID]
 	}
 	return total, nil
 }
