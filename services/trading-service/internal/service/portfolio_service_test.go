@@ -30,6 +30,10 @@ func (r *fakeAssetOwnershipRepo) Upsert(_ context.Context, _ *model.AssetOwnersh
 	return r.upsertErr
 }
 
+func (r *fakeAssetOwnershipRepo) IncreaseReservedAmount(_ context.Context, _ uint, _ model.OwnerType, _ uint, _ float64) error {
+	return nil
+}
+
 type fakeStockRepo struct {
 	stocks []model.Stock
 	err    error
