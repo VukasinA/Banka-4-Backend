@@ -35,3 +35,10 @@ func (r *assetOwnershipRepository) Upsert(ctx context.Context, ownership *model.
 		}).
 		Create(ownership).Error
 }
+
+func (r *assetOwnershipRepository) IncreaseReservedAmount(ctx context.Context, identityID uint, ownerType model.OwnerType, assetID uint, delta float64) error {
+	return r.db.WithContext(ctx).
+		Model(&model.AssetOwnership{}).
+		Where("identity_id = ? AND owner_type = ? AND asset_id = ?", identityID, ownerType, assetID).
+		UpdateColumn("reserved_amount", gorm.Expr("reserved_amount + ?", delta)).Error
+}
