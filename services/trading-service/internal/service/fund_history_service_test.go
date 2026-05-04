@@ -59,30 +59,27 @@ func TestCalculateAndSaveDailyHistory_Success(t *testing.T) {
 	listingRepo := &fakeListingRepo{}
 	ownershipRepo := &fakeAssetOwnershipRepo{}
 
-	// Let sumSecuritiesValue be 0 via fake ownership missing matching user items
 	svc := newTestFundService(fundRepo, ownershipRepo, listingRepo, bankingClient, &fakeFundUserClient{})
-	
+
 	historyRepo := &fakeFundHistoryRepo{}
 	err := svc.CalculateAndSaveDailyHistory(ctx, historyRepo)
 	require.NoError(t, err)
 
 	require.Len(t, historyRepo.saveAllRecords, 2)
 
-	// Fund 1 check
 	rec1 := historyRepo.saveAllRecords[0]
 	require.Equal(t, uint(1), rec1.FundID)
-	// LiquidAssets: 1000 + SecVal: 0 = TotalValue: 1000
+
 	require.Equal(t, 1000.0, rec1.TotalValue)
 	require.Equal(t, 1000.0, rec1.LiquidAssets)
-	// Profit = TotalValue (1000) - TotalInvested (2000) = -1000
+
 	require.Equal(t, -1000.0, rec1.Profit)
 
-	// Fund 2 check
 	rec2 := historyRepo.saveAllRecords[1]
 	require.Equal(t, uint(2), rec2.FundID)
 	require.Equal(t, 1000.0, rec2.TotalValue)
 	require.Equal(t, 1000.0, rec2.LiquidAssets)
-	// Profit = TotalValue (1000) - TotalInvested (1000) = 0
+
 	require.Equal(t, 0.0, rec2.Profit)
 }
 
@@ -91,27 +88,23 @@ func TestCalculateAndSaveDailyHistory_ErrorHandlingSkip(t *testing.T) {
 
 	fund1 := model.InvestmentFund{
 		FundID:        1,
-		AccountNumber: "FUND-123", // Will succeed
+		AccountNumber: "FUND-123",
 	}
 	fund2 := model.InvestmentFund{
 		FundID:        2,
-		AccountNumber: "FUND-ERROR", // Will fail getLiquidAssets
+		AccountNumber: "FUND-ERROR",
 	}
 
 	fundRepo := &fakeFundRepo{
 		findAllResult: []model.InvestmentFund{fund1, fund2},
 	}
 
-	bankingClient := &fakeFundBankingClient{
-		// Custom handler for getAccount
-		getAccountResult: &pb.GetAccountByNumberResponse{
-			AvailableBalance: 1000.0,
-		},
-	}
-	// Unfortunately, fakeFundBankingClient does not easily allow erroring out selectively by account number.
-	// I'll create a targeted mock here instead just for this test.
-	
 	customBankingClient := &testCustomBankingClient{
+		fakeFundBankingClient: fakeFundBankingClient{
+			getAccountResult: &pb.GetAccountByNumberResponse{
+				AvailableBalance: 1000.0,
+			},
+		},
 		getAccountByNumberFunc: func(ctx context.Context, accNum string) (*pb.GetAccountByNumberResponse, error) {
 			if accNum == "FUND-ERROR" {
 				return nil, errors.New("banking api error")
@@ -120,13 +113,22 @@ func TestCalculateAndSaveDailyHistory_ErrorHandlingSkip(t *testing.T) {
 		},
 	}
 
-	svc := newTestFundService(fundRepo, &fakeAssetOwnershipRepo{}, &fakeListingRepo{}, customBankingClient, &fakeFundUserClient{})
-	
+	exchange := defaultExchange()
+	svc := NewInvestmentFundService(
+		fundRepo,
+		&fakePositionRepo{},
+		&fakeListingRepo{},
+		&fakeInvestmentRepo{},
+		&fakeAssetOwnershipRepo{},
+		&fakeExchangeRepo{exchange: exchange},
+		customBankingClient,
+		&fakeFundUserClient{},
+	)
+
 	historyRepo := &fakeFundHistoryRepo{}
 	err := svc.CalculateAndSaveDailyHistory(ctx, historyRepo)
 	require.NoError(t, err)
 
-	// Expected only 1 record (Fund 1) because Fund 2 should be skipped using `continue`
 	require.Len(t, historyRepo.saveAllRecords, 1)
 	require.Equal(t, uint(1), historyRepo.saveAllRecords[0].FundID)
 	require.Equal(t, 2000.0, historyRepo.saveAllRecords[0].TotalValue)
@@ -134,7 +136,7 @@ func TestCalculateAndSaveDailyHistory_ErrorHandlingSkip(t *testing.T) {
 
 func TestCalculateAndSaveDailyHistory_RepositoryError(t *testing.T) {
 	ctx := context.Background()
-	
+
 	fundRepo := &fakeFundRepo{
 		findAllErr: errors.New("database connection failed"),
 	}
@@ -149,6 +151,7 @@ func TestCalculateAndSaveDailyHistory_RepositoryError(t *testing.T) {
 
 // ── Custom Banking Client for advanced tests ─────────────────────────────
 type testCustomBankingClient struct {
+	fakeFundBankingClient
 	getAccountByNumberFunc func(ctx context.Context, accountNumber string) (*pb.GetAccountByNumberResponse, error)
 }
 
@@ -156,12 +159,26 @@ func (c *testCustomBankingClient) GetAccountByNumber(ctx context.Context, accoun
 	if c.getAccountByNumberFunc != nil {
 		return c.getAccountByNumberFunc(ctx, accountNumber)
 	}
+	return c.fakeFundBankingClient.GetAccountByNumber(ctx, accountNumber) // Call the embedded method if not overridden
+}
+func (c *testCustomBankingClient) HasActiveLoan(_ context.Context, _ uint64) (*pb.HasActiveLoanResponse, error) {
 	return nil, nil
 }
-func (c *testCustomBankingClient) HasActiveLoan(_ context.Context, _ uint64) (*pb.HasActiveLoanResponse, error) { return nil, nil }
-func (c *testCustomBankingClient) CreatePaymentWithoutVerification(_ context.Context, _ *pb.CreatePaymentRequest) (*pb.CreatePaymentResponse, error) { return nil, nil }
-func (c *testCustomBankingClient) GetAccountsByClientID(_ context.Context, _ uint64) (*pb.GetAccountsByClientIDResponse, error) { return nil, nil }
-func (c *testCustomBankingClient) ConvertCurrency(_ context.Context, amount float64, _, _ string) (float64, error) { return amount, nil }
-func (c *testCustomBankingClient) ExecuteTradeSettlement(_ context.Context, _, _ string, _ pb.TradeSettlementDirection, _ float64) (*pb.ExecuteTradeSettlementResponse, error) { return nil, nil }
-func (c *testCustomBankingClient) GetAccountCurrency(_ context.Context, _ string) (string, error) { return "RSD", nil }
-func (c *testCustomBankingClient) CreateFundAccount(_ context.Context, _ string, _ uint64) (string, error) { return "", nil }
+func (c *testCustomBankingClient) CreatePaymentWithoutVerification(_ context.Context, _ *pb.CreatePaymentRequest) (*pb.CreatePaymentResponse, error) {
+	return nil, nil
+}
+func (c *testCustomBankingClient) GetAccountsByClientID(_ context.Context, _ uint64) (*pb.GetAccountsByClientIDResponse, error) {
+	return nil, nil
+}
+func (c *testCustomBankingClient) ConvertCurrency(_ context.Context, amount float64, _, _ string) (float64, error) {
+	return amount, nil
+}
+func (c *testCustomBankingClient) ExecuteTradeSettlement(_ context.Context, _, _ string, _ pb.TradeSettlementDirection, _ float64) (*pb.ExecuteTradeSettlementResponse, error) {
+	return nil, nil
+}
+func (c *testCustomBankingClient) GetAccountCurrency(_ context.Context, _ string) (string, error) {
+	return "RSD", nil
+}
+func (c *testCustomBankingClient) CreateFundAccount(_ context.Context, _ string, _ uint64) (string, error) {
+	return "", nil
+}

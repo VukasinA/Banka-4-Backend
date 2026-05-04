@@ -5,16 +5,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/RAF-SI-2025/Banka-4-Backend/common/pkg/db"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/model"
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
+
+	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 )
 
 func setupTestDB(t *testing.T) *gorm.DB {
-	// Use in-memory SQLite for repository testing
-	database, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	database, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	require.NoError(t, err)
 
 	err = database.AutoMigrate(

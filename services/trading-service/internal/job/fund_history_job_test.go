@@ -37,7 +37,9 @@ func (f *fakeFundRepoForJob) FindAll(ctx context.Context, name, sortBy, sortDir 
 func (f *fakeFundRepoForJob) FindByManagerID(ctx context.Context, managerID uint) ([]model.InvestmentFund, error) {
 	return nil, nil
 }
-func (f *fakeFundRepoForJob) Create(ctx context.Context, fund *model.InvestmentFund) error { return nil }
+func (f *fakeFundRepoForJob) Create(ctx context.Context, fund *model.InvestmentFund) error {
+	return nil
+}
 func (f *fakeFundRepoForJob) FindHoldings(ctx context.Context, fundID uint) ([]model.AssetOwnership, error) {
 	return nil, nil
 }
@@ -53,7 +55,9 @@ type fakeHistoryRepo struct {
 	err    error
 }
 
-func (f *fakeHistoryRepo) Save(ctx context.Context, record *model.FundHistoryRecord) error { return nil }
+func (f *fakeHistoryRepo) Save(ctx context.Context, record *model.FundHistoryRecord) error {
+	return nil
+}
 func (f *fakeHistoryRepo) SaveAll(ctx context.Context, records []*model.FundHistoryRecord) error {
 	f.called = true
 	return f.err
@@ -69,17 +73,23 @@ func (d *dummyBankingClient) GetAccountByNumber(ctx context.Context, accountNumb
 
 type dummyOwnershipRepo struct{}
 
-func (d *dummyOwnershipRepo) FindByUserId(ctx context.Context, userID uint, ownerType model.OwnerType) ([]model.AssetOwnership, error) {
+func (d *dummyOwnershipRepo) FindByUserId(ctx context.Context, userId uint, ownerType model.OwnerType) ([]model.AssetOwnership, error) {
 	return nil, nil
 }
 
-func (d *dummyOwnershipRepo) FindByUserIdAndAssetId(ctx context.Context, userID uint, ownerType model.OwnerType, assetID uint) (*model.AssetOwnership, error) {
+func (d *dummyOwnershipRepo) FindByID(ctx context.Context, id uint) (*model.AssetOwnership, error) {
 	return nil, nil
 }
+
 func (d *dummyOwnershipRepo) Upsert(ctx context.Context, ownership *model.AssetOwnership) error {
 	return nil
 }
-func (d *dummyOwnershipRepo) Save(ctx context.Context, ownership *model.AssetOwnership) error {
+
+func (d *dummyOwnershipRepo) FindAllPublic(ctx context.Context, page, pageSize int) ([]model.AssetOwnership, int64, error) {
+	return nil, 0, nil
+}
+
+func (d *dummyOwnershipRepo) UpdateOTCFields(ctx context.Context, ownershipID uint, publicAmount, reservedAmount float64) error {
 	return nil
 }
 
@@ -95,7 +105,6 @@ func TestFundHistoryJob_Run_Success(t *testing.T) {
 	}
 	historyRepo := &fakeHistoryRepo{}
 
-	// To prevent panics in dependencies, supply nil or empty stubs where appropriate
 	svc := service.NewInvestmentFundService(
 		fundRepo,
 		nil, // positionRepo
@@ -117,14 +126,20 @@ func TestFundHistoryJob_Run_Success(t *testing.T) {
 func TestFundHistoryJob_Run_ServiceError(t *testing.T) {
 	ctx := context.Background()
 
-	// Cause GetAllInvestmentFunds to return an error, which makes CalculateAndSaveDailyHistory fail
 	fundRepo := &fakeFundRepoForJob{
 		err: errors.New("db down"),
 	}
 	historyRepo := &fakeHistoryRepo{}
 
 	svc := service.NewInvestmentFundService(
-		fundRepo, nil, nil, nil, nil, nil, nil, nil,
+		fundRepo,
+		nil, // positionRepo
+		nil, // listingRepo
+		nil, // investmentRepo
+		&dummyOwnershipRepo{},
+		nil, // exchangeRepo
+		&dummyBankingClient{},
+		nil, // userClient
 	)
 
 	job := NewFundHistoryJob(svc, historyRepo)

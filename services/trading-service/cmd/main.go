@@ -78,6 +78,7 @@ func main() {
 			repository.NewStockRepository,
 			repository.NewOptionRepository,
 			job.NewDailyPriceJob,
+			job.NewFundHistoryJob,
 			job.NewFundRedemptionJob,
 			service.NewStockService,
 			repository.NewExchangeRepository,
@@ -108,6 +109,7 @@ func main() {
 			repository.NewInvestmentFundRepository,
 			repository.NewClientFundPositionRepository,
 			repository.NewClientFundInvestmentRepository,
+			repository.NewFundHistoryRecordRepository,
 			repository.NewClientFundRedemptionRepository,
 			service.NewInvestmentFundService,
 			handler.NewInvestmentFundHandler,
@@ -145,6 +147,7 @@ func main() {
 				&model.ClientFundInvestment{},
 				&model.ClientFundRedemption{},
 				&model.FundPerformance{},
+				&model.FundHistoryRecord{},
 			)
 		}),
 		fx.Invoke(func(lc fx.Lifecycle, svc *service.StockService) {
@@ -204,16 +207,19 @@ func main() {
 				}
 			}()
 		}),
-		fx.Invoke(func(lc fx.Lifecycle, dailyJob *job.DailyPriceJob) {
+		fx.Invoke(func(lc fx.Lifecycle, dailyJob *job.DailyPriceJob, fundHistoryJob *job.FundHistoryJob) {
 			c := cron.New(cron.WithLocation(time.UTC))
 			_, err := c.AddFunc("0 0 * * *", func() {
 				ctx := context.Background()
 				if err := dailyJob.Run(ctx); err != nil {
 					logging.Error("Daily price job failed", zap.Error(err))
 				}
+				if err := fundHistoryJob.Run(ctx); err != nil {
+					logging.Error("Fund history job failed", zap.Error(err))
+				}
 			})
 			if err != nil {
-				log.Fatal("Failed to schedule daily price job", zap.Error(err))
+				log.Fatal("Failed to schedule daily jobs", zap.Error(err))
 			}
 
 			lc.Append(fx.Hook{

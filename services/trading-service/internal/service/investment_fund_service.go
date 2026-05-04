@@ -948,3 +948,42 @@ func (s *InvestmentFundService) GetFundDetail(ctx context.Context, fundID uint) 
 		PerformanceHistory: perfResp,
 	}, nil
 }
+
+func (s *InvestmentFundService) CalculateAndSaveDailyHistory(ctx context.Context, historyRepo repository.FundHistoryRecordRepository) error {
+	funds, err := s.fundRepo.GetAllInvestmentFunds(ctx)
+	if err != nil {
+		return err
+	}
+
+	var records []*model.FundHistoryRecord
+	for _, fund := range funds {
+		liquidAssets, err := s.getLiquidAssets(ctx, fund.AccountNumber)
+		if err != nil {
+			continue
+		}
+
+		secVal, err := s.sumSecuritiesValue(ctx, fund.FundID)
+		if err != nil {
+			continue
+		}
+
+		totalValue := liquidAssets + secVal
+
+		var totalInvested float64
+		for _, pos := range fund.Positions {
+			totalInvested += pos.TotalInvestedAmount
+		}
+
+		profit := totalValue - totalInvested
+
+		records = append(records, &model.FundHistoryRecord{
+			FundID:       fund.FundID,
+			RecordDate:   s.now(),
+			TotalValue:   totalValue,
+			Profit:       profit,
+			LiquidAssets: liquidAssets,
+		})
+	}
+
+	return historyRepo.SaveAll(ctx, records)
+}
