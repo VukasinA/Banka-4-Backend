@@ -479,9 +479,6 @@ func (s *InvestmentFundService) GetClientFundPositions(ctx context.Context, clie
 		}
 
 		fundTotalValue := sharesValue + liquidAssets
-		if err != nil {
-			return nil, err
-		}
 		fundTotalInvested, err := s.getFundTotalInvestedRSD(ctx, pos.FundID)
 		if err != nil {
 			return nil, err
@@ -490,9 +487,9 @@ func (s *InvestmentFundService) GetClientFundPositions(ctx context.Context, clie
 		if fundTotalInvested == 0 {
 			result[i].ClientsSharePercent = 0
 		} else {
-			result[i].ClientsSharePercent = pos.TotalInvestedAmount / fundTotalInvested
+			result[i].ClientsSharePercent = (pos.TotalInvestedAmount / fundTotalInvested) * 100
 		}
-		result[i].ClientsShareValueRSD = result[i].ClientsSharePercent * fundTotalValue
+		result[i].ClientsShareValueRSD = (result[i].ClientsSharePercent * fundTotalValue) / 100
 		result[i].TotalProfit = result[i].ClientsShareValueRSD - pos.TotalInvestedAmount
 	}
 

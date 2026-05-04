@@ -215,13 +215,13 @@ func (h *InvestmentFundHandler) GetFundDetail(c *gin.Context) {
 func (h *InvestmentFundHandler) GetClientFundPositions(c *gin.Context) {
 	clientID, err := strconv.ParseUint(c.Param("clientId"), 10, 64)
 	if err != nil || clientID == 0 {
-		c.Error(errors.BadRequestErr("invalid client id"))
+		_ = c.Error(errors.BadRequestErr("invalid client id"))
 		return
 	}
 
 	resp, err := h.service.GetClientFundPositions(c.Request.Context(), uint(clientID))
 	if err != nil {
-		c.Error(err)
+		_ = c.Error(err)
 		return
 	}
 
