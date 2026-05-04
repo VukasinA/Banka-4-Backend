@@ -48,6 +48,10 @@ func (r *fakeOtcOfferRepo) FindByID(_ context.Context, id uint) (*model.OtcOffer
 	return &cp, nil
 }
 
+func (r *fakeOtcOfferRepo) FindByIDForUpdate(ctx context.Context, id uint) (*model.OtcOffer, error) {
+	return r.FindByID(ctx, id)
+}
+
 func (r *fakeOtcOfferRepo) FindActiveForUser(_ context.Context, userID uint) ([]model.OtcOffer, error) {
 	var out []model.OtcOffer
 	for _, o := range r.offers {
@@ -103,6 +107,18 @@ func (r *fakeOtcContractRepo) FindByID(_ context.Context, id uint) (*model.OtcOp
 	cp := *c
 	return &cp, nil
 }
+func (r *fakeOtcContractRepo) FindByIDForUpdate(ctx context.Context, id uint) (*model.OtcOptionContract, error) {
+	return r.FindByID(ctx, id)
+}
+func (r *fakeOtcContractRepo) FindByOfferID(_ context.Context, offerID uint) (*model.OtcOptionContract, error) {
+	for _, contract := range r.contracts {
+		if contract.OtcOfferID == offerID {
+			copy := *contract
+			return &copy, nil
+		}
+	}
+	return nil, nil
+}
 
 func (r *fakeOtcContractRepo) FindForUser(_ context.Context, userID uint) ([]model.OtcOptionContract, error) {
 	var out []model.OtcOptionContract
@@ -117,8 +133,21 @@ func (r *fakeOtcContractRepo) FindForUser(_ context.Context, userID uint) ([]mod
 func (r *fakeOtcContractRepo) FindActiveBySellerAndStock(_ context.Context, sellerID, stockID uint, now time.Time) ([]model.OtcOptionContract, error) {
 	var out []model.OtcOptionContract
 	for _, c := range r.contracts {
-		if c.SellerID == sellerID && c.StockAssetID == stockID && !c.IsExercised && c.SettlementDate.After(now) {
+		if c.SellerID == sellerID && c.StockAssetID == stockID && c.Status == model.OtcOptionContractStatusActive && c.SettlementDate.After(now) {
 			out = append(out, *c)
+		}
+	}
+	return out, nil
+}
+
+func (r *fakeOtcContractRepo) FindExpiredActive(_ context.Context, before time.Time, limit int) ([]model.OtcOptionContract, error) {
+	out := make([]model.OtcOptionContract, 0)
+	for _, c := range r.contracts {
+		if c.Status == model.OtcOptionContractStatusActive && !c.SettlementDate.After(before) {
+			out = append(out, *c)
+		}
+		if limit > 0 && len(out) >= limit {
+			break
 		}
 	}
 	return out, nil
@@ -176,6 +205,18 @@ func (r *fakeOtcAssetOwnershipRepo) FindByID(_ context.Context, id uint) (*model
 	}
 	return nil, nil
 }
+func (r *fakeOtcAssetOwnershipRepo) FindByUserAndAsset(_ context.Context, id uint, ot model.OwnerType, assetID uint) (*model.AssetOwnership, error) {
+	key := otcOwnershipKey(id, ot, assetID)
+	if ownership, ok := r.ownerships[key]; ok {
+		return new(*ownership), nil
+	}
+	return nil, nil
+}
+
+func (r *fakeOtcAssetOwnershipRepo) FindByUserAndAssetForUpdate(ctx context.Context, id uint, ot model.OwnerType, assetID uint) (*model.AssetOwnership, error) {
+	return r.FindByUserAndAsset(ctx, id, ot, assetID)
+}
+
 func (r *fakeOtcAssetOwnershipRepo) FindAllPublic(_ context.Context, page, pageSize int) ([]model.AssetOwnership, int64, error) {
 	return nil, 0, nil
 }
@@ -257,7 +298,17 @@ func newOtcTestService(t *testing.T) (*OtcOfferService, *fakeOtcOfferRepo, *fake
 		Asset:        model.Asset{AssetType: model.AssetTypeStock},
 	})
 
-	svc := NewOtcOfferService(offerRepo, contractRepo, ownershipRepo, stockRepo, banking, &fakeUserClient{})
+	processingSvc := NewOtcDealProcessingService(
+		offerRepo,
+		contractRepo,
+		newProcessingShareReservationRepo(),
+		newProcessingExecutionRepo(),
+		ownershipRepo,
+		&processingTxManager{},
+		banking,
+	)
+
+	svc := NewOtcOfferService(offerRepo, contractRepo, ownershipRepo, stockRepo, banking, &fakeUserClient{}, processingSvc)
 	return svc, offerRepo, contractRepo, ownershipRepo, banking
 }
 
@@ -424,7 +475,10 @@ func TestOtcAcceptOffer_Success_CreatesContractAndIncreasesReservedAmount(t *tes
 	assert.Len(t, contractRepo.contracts, 1)
 	assert.Equal(t, 10, contract.Amount)
 	assert.Equal(t, float64(50), contract.StrikePrice)
-	assert.Equal(t, float64(10), ownershipRepo.reservedDeltas[otcAssetID], "reserved amount should increase by contract amount")
+	sellerOwnership, findErr := ownershipRepo.FindByUserAndAsset(context.Background(), otcSellerID, model.OwnerTypeClient, otcAssetID)
+	require.NoError(t, findErr)
+	require.NotNil(t, sellerOwnership)
+	assert.Equal(t, float64(10), sellerOwnership.ReservedAmount, "reserved amount should increase by contract amount")
 }
 
 func TestOtcAcceptOffer_CallerIsModifiedBy_ReturnsError(t *testing.T) {

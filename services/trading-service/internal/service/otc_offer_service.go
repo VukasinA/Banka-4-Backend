@@ -7,7 +7,6 @@ import (
 
 	"github.com/RAF-SI-2025/Banka-4-Backend/common/pkg/auth"
 	"github.com/RAF-SI-2025/Banka-4-Backend/common/pkg/errors"
-	"github.com/RAF-SI-2025/Banka-4-Backend/common/pkg/pb"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/client"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/dto"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/model"
@@ -30,8 +29,9 @@ import (
 //
 //  4. Only the party OPPOSITE to ModifiedBy may accept the current offer.
 //
-//  5. On acceptance: an OtcOptionContract is created and the premium is transferred
-//     from the buyer's account to the seller's. (TODO: replace with SAGA.)
+//  5. On acceptance: processing is delegated to the OTC deal processing service,
+//     which transfers the premium, activates the option contract, and creates
+//     the seller reservation infrastructure.
 //
 //  6. Seller capacity is validated per spec 3+7+2: PublicAmount must cover the
 //     sum of all active negotiations and valid option contracts for the same stock.
@@ -42,6 +42,7 @@ type OtcOfferService struct {
 	stockRepo          repository.StockRepository
 	bankingClient      client.BankingClient
 	userClient         client.UserServiceClient
+	processingService  *OtcDealProcessingService
 	now                func() time.Time
 }
 
@@ -52,6 +53,7 @@ func NewOtcOfferService(
 	stockRepo repository.StockRepository,
 	bankingClient client.BankingClient,
 	userClient client.UserServiceClient,
+	processingService *OtcDealProcessingService,
 ) *OtcOfferService {
 	return &OtcOfferService{
 		offerRepo:          offerRepo,
@@ -60,6 +62,7 @@ func NewOtcOfferService(
 		stockRepo:          stockRepo,
 		bankingClient:      bankingClient,
 		userClient:         userClient,
+		processingService:  processingService,
 		now:                time.Now,
 	}
 }
@@ -206,12 +209,8 @@ func (s *OtcOfferService) SendCounterOffer(ctx context.Context, offerID uint, re
 
 // AcceptOffer is called by the party OPPOSITE to ModifiedBy to accept the offer.
 //
-// On acceptance:
-//  1. final seller capacity validation,
-//  2. premium transfer from buyer's account to seller's,
-//  3. OtcOptionContract is created,
-//  4. seller's reserved_amount is increased by the contracted quantity,
-//  5. offer status transitions to ACCEPTED with a link to the contract.
+// On acceptance, the service validates the current negotiation state and then
+// delegates the actual agreement finalization to the OTC processing layer.
 func (s *OtcOfferService) AcceptOffer(ctx context.Context, offerID uint, req dto.AcceptOfferRequest) (*model.OtcOptionContract, error) {
 	callerID, err := auth.GetSubjectFromContext(ctx)
 	if err != nil {
@@ -238,11 +237,21 @@ func (s *OtcOfferService) AcceptOffer(ctx context.Context, offerID uint, req dto
 		if req.AccountNumber == nil {
 			return nil, errors.BadRequestErr("seller_account_number is required when accepting")
 		}
-		if _, err := s.bankingClient.GetAccountByNumber(ctx, *req.AccountNumber); err != nil {
+		sellerAccount, err := s.bankingClient.GetAccountByNumber(ctx, *req.AccountNumber)
+		if err != nil {
 			return nil, errors.BadRequestErr("seller account number is invalid")
 		}
+
+		if uint(sellerAccount.ClientId) != offer.SellerID {
+			return nil, errors.BadRequestErr("the provided account does not belong to you")
+		}
+
 		offer.SellerAccountNumber = req.AccountNumber
+		if err := s.offerRepo.Save(ctx, offer); err != nil {
+			return nil, errors.InternalErr(err)
+		}
 	}
+
 	if offer.SellerAccountNumber == nil {
 		return nil, errors.BadRequestErr("seller account number is missing — the seller must send a counter-offer or accept first")
 	}
@@ -251,59 +260,7 @@ func (s *OtcOfferService) AcceptOffer(ctx context.Context, offerID uint, req dto
 		return nil, err
 	}
 
-	// 1) Transfer premium: buyer → seller.
-	// TODO(SAGA): Replace with proper SAGA orchestration when introduced.
-	if _, err := s.bankingClient.CreatePaymentWithoutVerification(ctx, &pb.CreatePaymentRequest{
-		PayerAccountNumber:     offer.BuyerAccountNumber,
-		RecipientAccountNumber: *offer.SellerAccountNumber,
-		Amount:                 offer.Premium,
-		PaymentCode:            "289",
-		Purpose:                fmt.Sprintf("OTC premium for offer #%d", offer.OtcOfferID),
-	}); err != nil {
-		return nil, errors.InternalErr(fmt.Errorf("premium transfer failed: %w", err))
-	}
-
-	// 2) Create the option contract.
-	now := s.now()
-	contract := &model.OtcOptionContract{
-		OtcOfferID:     offer.OtcOfferID,
-		BuyerID:        offer.BuyerID,
-		SellerID:       offer.SellerID,
-		StockAssetID:   offer.StockAssetID,
-		Amount:         offer.Amount,
-		StrikePrice:    offer.PricePerStock,
-		Premium:        offer.Premium,
-		SettlementDate: offer.SettlementDate,
-	}
-	if err := s.optionContractRepo.Create(ctx, contract); err != nil {
-		return nil, errors.InternalErr(fmt.Errorf("option contract creation failed (premium already transferred): %w", err))
-	}
-
-	// 3) Increase the seller's reserved_amount by the contracted quantity.
-	stocks, _ := s.stockRepo.FindByAssetIDs(ctx, []uint{offer.StockAssetID})
-	for i := range stocks {
-		if stocks[i].AssetID == offer.StockAssetID {
-			_ = s.assetOwnershipRepo.IncreaseReservedAmount(
-				ctx, offer.SellerID, model.OwnerTypeClient, stocks[i].AssetID, float64(offer.Amount),
-			)
-			break
-		}
-	}
-
-	// 4) Mark offer as accepted and link to the contract.
-	offer.Status = model.OtcOfferStatusAccepted
-	offer.OptionContractID = &contract.OtcOptionContractID
-	offer.LastModified = now
-	offer.ModifiedBy = callerID
-	if err := s.offerRepo.Save(ctx, offer); err != nil {
-		return nil, errors.InternalErr(err)
-	}
-
-	created, err := s.optionContractRepo.FindByID(ctx, contract.OtcOptionContractID)
-	if err != nil {
-		return nil, errors.InternalErr(err)
-	}
-	return created, nil
+	return s.processingService.FinalizeAgreement(ctx, offer.OtcOfferID, callerID)
 }
 
 // RejectOffer allows either party to withdraw from the negotiation at any time.

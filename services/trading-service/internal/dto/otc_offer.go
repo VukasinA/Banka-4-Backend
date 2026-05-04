@@ -74,18 +74,21 @@ type OtcOptionContractResponse struct {
 	SellerFullName string `json:"seller_full_name"`
 	SellerBank     string `json:"seller_bank"`
 
-	StockAssetID    uint       `json:"stock_asset_id"`
-	Ticker          string     `json:"ticker,omitempty"`
-	StockName       string     `json:"stock_name,omitempty"`
-	Amount          int        `json:"amount"`
-	ListingCurrency string     `json:"listing_currency"`
-	StrikePrice     float64    `json:"strike_price"`
-	CurrentPrice    *float64   `json:"current_price"`
-	Premium         float64    `json:"premium"`
-	SettlementDate  time.Time  `json:"settlement_date"`
-	IsExercised     bool       `json:"is_exercised"`
-	ExercisedAt     *time.Time `json:"exercised_at,omitempty"`
-	CreatedAt       time.Time  `json:"created_at"`
+	StockAssetID        uint                          `json:"stock_asset_id"`
+	Ticker              string                        `json:"ticker,omitempty"`
+	StockName           string                        `json:"stock_name,omitempty"`
+	Amount              int                           `json:"amount"`
+	ListingCurrency     string                        `json:"listing_currency"`
+	StrikePrice         float64                       `json:"strike_price"`
+	CurrentPrice        *float64                      `json:"current_price"`
+	Premium             float64                       `json:"premium"`
+	SettlementDate      time.Time                     `json:"settlement_date"`
+	BuyerAccountNumber  string                        `json:"buyer_account_number"`
+	SellerAccountNumber string                        `json:"seller_account_number"`
+	Status              model.OtcOptionContractStatus `json:"status"`
+	IsExercised         bool                          `json:"is_exercised"`
+	ExercisedAt         *time.Time                    `json:"exercised_at,omitempty"`
+	CreatedAt           time.Time                     `json:"created_at"`
 }
 
 func ToOtcOfferResponse(o model.OtcOffer) OtcOfferResponse {
@@ -133,6 +136,9 @@ func ToOtcOptionContractResponse(c model.OtcOptionContract) OtcOptionContractRes
 		StrikePrice:         c.StrikePrice,
 		Premium:             c.Premium,
 		SettlementDate:      c.SettlementDate,
+		BuyerAccountNumber:  c.BuyerAccountNumber,
+		SellerAccountNumber: c.SellerAccountNumber,
+		Status:              c.Status,
 		IsExercised:         c.IsExercised,
 		ExercisedAt:         c.ExercisedAt,
 		CreatedAt:           c.CreatedAt,
