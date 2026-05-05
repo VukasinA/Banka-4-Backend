@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/RAF-SI-2025/Banka-4-Backend/common/pkg/auth"
 	"github.com/gin-gonic/gin"
 
 	"github.com/RAF-SI-2025/Banka-4-Backend/common/pkg/errors"
@@ -65,7 +66,7 @@ func (h *ActuaryHandler) ListActuaries(c *gin.Context) {
 
 // UpdateActuarySettings godoc
 // @Summary Update actuary settings
-// @Description Updates an agent's limit and approval settings. Only supervisors can perform this action.
+// @Description Updates an actuary's settings including limit, approval, isAgent and isSupervisor flags. Only admins can perform this action.
 // @Tags actuaries
 // @Accept json
 // @Produce json
@@ -91,7 +92,14 @@ func (h *ActuaryHandler) UpdateActuarySettings(c *gin.Context) {
 		return
 	}
 
-	actuary, svcErr := h.service.UpdateActuarySettings(c.Request.Context(), uint(id), &req)
+	authCtx := auth.GetAuthFromContext(c.Request.Context())
+	if authCtx == nil || authCtx.EmployeeID == nil {
+		_ = c.Error(errors.UnauthorizedErr("not authenticated"))
+		return
+	}
+	callerID := *authCtx.EmployeeID
+
+	actuary, svcErr := h.service.UpdateActuarySettings(c.Request.Context(), uint(id), callerID, &req)
 	if svcErr != nil {
 		_ = c.Error(svcErr)
 		return

@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package trading.v1;
+
+option go_package = "common/pkg/pb;pb";
+
+service TradingService {
+  rpc TransferFunds(TransferFundsRequest) returns (TransferFundsResponse);
+}
+
+message TransferFundsRequest {
+  uint64 from_manager_id = 1;
+  uint64 to_manager_id   = 2;
+}
+
+message TransferFundsResponse {
+  uint64 funds_transferred = 1;
+}

@@ -78,6 +78,7 @@ func Load() *Configuration {
 	return &Configuration{
 		Env:                GetOrDefault("ENV", "development"),
 		Port:               GetOrDefault("PORT", "8082"),
+		GrpcPort:           GetOrDefault("GRPC_PORT", "50053"),
 		JWTSecret:          GetOrThrow("JWT_SECRET"),
 		UserServiceAddr:    GetOrDefault("USER_SERVICE_ADDR", "localhost:50051"),
 		UserServiceBaseURL: GetOrDefault("USER_SERVICE_BASE_URL", "http://localhost:8080"),

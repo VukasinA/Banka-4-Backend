@@ -38,6 +38,7 @@ services:
       - "${PORT}:${PORT}"
     env_file: .env
     environment:
+      TRADING_SERVICE_ADDR: trading_service:50053
       AIR_CONFIG_PATH: /app/services/user-service/.air.toml
     depends_on:
       user_service_db:
@@ -93,6 +94,7 @@ services:
       - "${TRADING_SERVICE_PORT}:${TRADING_SERVICE_PORT}"
     env_file: .env
     environment:
+      GRPC_PORT: 50053
       AIR_CONFIG_PATH: /app/services/trading-service/.air.toml
       PORT: ${TRADING_SERVICE_PORT}
       USER_SERVICE_ADDR: user_service:50051

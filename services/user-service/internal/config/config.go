@@ -35,17 +35,18 @@ func (c *DBConfig) DSN() string {
 }
 
 type Configuration struct {
-	Env               string
-	Port              string
-	DB                DBConfig
-	GrpcPort          string // unused for now until we add multiple microservices
-	JWTSecret         string // Dodato za JWT
-	JWTExpiry         int    // U minutima
-	SMTP              SMTPConfig
-	URLs              URLConfig
-	RefreshExpiry     int // refresh token
-	FailedLoginWindow int
-	MaxFailedLogins   int
+	Env                string
+	Port               string
+	DB                 DBConfig
+	GrpcPort           string // unused for now until we add multiple microservices
+	TradingServiceAddr string
+	JWTSecret          string // Dodato za JWT
+	JWTExpiry          int    // U minutima
+	SMTP               SMTPConfig
+	URLs               URLConfig
+	RefreshExpiry      int // refresh token
+	FailedLoginWindow  int
+	MaxFailedLogins    int
 }
 
 func GetAsIntOrDefault(env string, defaultValue int) int {
@@ -83,9 +84,10 @@ func Load() *Configuration {
 	_ = godotenv.Load()
 
 	return &Configuration{
-		Env:      GetOrDefault("ENV", "development"),
-		Port:     GetOrDefault("PORT", "8080"),
-		GrpcPort: GetOrDefault("GRPC_PORT", "50051"),
+		Env:                GetOrDefault("ENV", "development"),
+		Port:               GetOrDefault("PORT", "8080"),
+		GrpcPort:           GetOrDefault("GRPC_PORT", "50051"),
+		TradingServiceAddr: GetOrDefault("TRADING_SERVICE_ADDR", "localhost:50053"),
 		DB: DBConfig{
 			Host:     GetOrThrow("DB_HOST"),
 			Port:     GetOrThrow("DB_PORT"),

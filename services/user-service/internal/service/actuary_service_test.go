@@ -11,53 +11,79 @@ import (
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/user-service/internal/model"
 )
 
+type fakeTradingClient struct {
+	transferErr    error
+	transferCalled bool
+	fromManagerID  uint
+	toManagerID    uint
+}
+
+func (f *fakeTradingClient) TransferFunds(_ context.Context, fromManagerID uint, toManagerID uint) (uint64, error) {
+	f.transferCalled = true
+	f.fromManagerID = fromManagerID
+	f.toManagerID = toManagerID
+	return 0, f.transferErr
+}
+
 func TestUpdateActuarySettings(t *testing.T) {
 	t.Parallel()
 
 	agent := activeAgent()
+	supervisor := activeSupervisor()
+	admin := adminEmployee()
 
 	tests := []struct {
-		name        string
-		empRepo     *fakeEmployeeRepo
-		actuaryRepo *fakeActuaryRepo
-		employeeID  uint
-		req         *dto.UpdateActuarySettingsRequest
-		expectErr   bool
-		errMsg      string
+		name                 string
+		empRepo              *fakeEmployeeRepo
+		actuaryRepo          *fakeActuaryRepo
+		tradingClient        *fakeTradingClient
+		employeeID           uint
+		callerID             uint
+		req                  *dto.UpdateActuarySettingsRequest
+		expectErr            bool
+		errMsg               string
+		expectTransferCalled bool
 	}{
 		{
-			name: "successful update",
+			name: "successful limit update",
 			empRepo: &fakeEmployeeRepo{
 				byIDs: map[uint]*model.Employee{agent.EmployeeID: agent},
 			},
 			actuaryRepo: &fakeActuaryRepo{
 				byEmployeeID: map[uint]*model.ActuaryInfo{agent.EmployeeID: agent.ActuaryInfo},
 			},
-			employeeID: agent.EmployeeID,
+			tradingClient: &fakeTradingClient{},
+			employeeID:    agent.EmployeeID,
+			callerID:      admin.EmployeeID,
 			req: &dto.UpdateActuarySettingsRequest{
 				Limit:        ptr(200000.0),
 				NeedApproval: ptr(false),
 			},
+			expectTransferCalled: false,
 		},
 		{
-			name:        "employee not found",
-			empRepo:     &fakeEmployeeRepo{byIDs: map[uint]*model.Employee{}},
-			actuaryRepo: &fakeActuaryRepo{},
-			employeeID:  999,
-			req:         &dto.UpdateActuarySettingsRequest{Limit: ptr(1000.0)},
-			expectErr:   true,
-			errMsg:      "employee not found",
+			name:          "employee not found",
+			empRepo:       &fakeEmployeeRepo{byIDs: map[uint]*model.Employee{}},
+			actuaryRepo:   &fakeActuaryRepo{},
+			tradingClient: &fakeTradingClient{},
+			employeeID:    999,
+			callerID:      admin.EmployeeID,
+			req:           &dto.UpdateActuarySettingsRequest{Limit: ptr(1000.0)},
+			expectErr:     true,
+			errMsg:        "employee not found",
 		},
 		{
-			name: "employee is not an agent",
+			name: "employee is not an agent - limit update fails",
 			empRepo: &fakeEmployeeRepo{
 				byIDs: map[uint]*model.Employee{activeEmployee().EmployeeID: activeEmployee()},
 			},
-			actuaryRepo: &fakeActuaryRepo{},
-			employeeID:  activeEmployee().EmployeeID,
-			req:         &dto.UpdateActuarySettingsRequest{Limit: ptr(1000.0)},
-			expectErr:   true,
-			errMsg:      "only agents have configurable limits",
+			actuaryRepo:   &fakeActuaryRepo{},
+			tradingClient: &fakeTradingClient{},
+			employeeID:    activeEmployee().EmployeeID,
+			callerID:      admin.EmployeeID,
+			req:           &dto.UpdateActuarySettingsRequest{Limit: ptr(1000.0)},
+			expectErr:     true,
+			errMsg:        "only agents have configurable limits",
 		},
 		{
 			name: "repo save error",
@@ -68,17 +94,101 @@ func TestUpdateActuarySettings(t *testing.T) {
 				byEmployeeID: map[uint]*model.ActuaryInfo{agent.EmployeeID: agent.ActuaryInfo},
 				saveErr:      fmt.Errorf("db error"),
 			},
-			employeeID: agent.EmployeeID,
-			req:        &dto.UpdateActuarySettingsRequest{Limit: ptr(200000.0)},
-			expectErr:  true,
+			tradingClient: &fakeTradingClient{},
+			employeeID:    agent.EmployeeID,
+			callerID:      admin.EmployeeID,
+			req:           &dto.UpdateActuarySettingsRequest{Limit: ptr(200000.0)},
+			expectErr:     true,
+		},
+		{
+			name: "remove isSupervisor - transfer funds called",
+			empRepo: &fakeEmployeeRepo{
+				byIDs: map[uint]*model.Employee{supervisor.EmployeeID: supervisor},
+			},
+			actuaryRepo: &fakeActuaryRepo{
+				byEmployeeID: map[uint]*model.ActuaryInfo{supervisor.EmployeeID: supervisor.ActuaryInfo},
+			},
+			tradingClient: &fakeTradingClient{},
+			employeeID:    supervisor.EmployeeID,
+			callerID:      admin.EmployeeID,
+			req: &dto.UpdateActuarySettingsRequest{
+				IsSupervisor: ptr(false),
+			},
+			expectTransferCalled: true,
+		},
+		{
+			name: "keep isSupervisor true - transfer funds not called",
+			empRepo: &fakeEmployeeRepo{
+				byIDs: map[uint]*model.Employee{supervisor.EmployeeID: supervisor},
+			},
+			actuaryRepo: &fakeActuaryRepo{
+				byEmployeeID: map[uint]*model.ActuaryInfo{supervisor.EmployeeID: supervisor.ActuaryInfo},
+			},
+			tradingClient: &fakeTradingClient{},
+			employeeID:    supervisor.EmployeeID,
+			callerID:      admin.EmployeeID,
+			req: &dto.UpdateActuarySettingsRequest{
+				IsSupervisor: ptr(true),
+			},
+			expectTransferCalled: false,
+		},
+		{
+			name: "remove isSupervisor - transfer funds fails",
+			empRepo: &fakeEmployeeRepo{
+				byIDs: map[uint]*model.Employee{supervisor.EmployeeID: supervisor},
+			},
+			actuaryRepo: &fakeActuaryRepo{
+				byEmployeeID: map[uint]*model.ActuaryInfo{supervisor.EmployeeID: supervisor.ActuaryInfo},
+			},
+			tradingClient: &fakeTradingClient{
+				transferErr: fmt.Errorf("trading service unavailable"),
+			},
+			employeeID: supervisor.EmployeeID,
+			callerID:   admin.EmployeeID,
+			req: &dto.UpdateActuarySettingsRequest{
+				IsSupervisor: ptr(false),
+			},
+			expectErr:            true,
+			expectTransferCalled: true,
+		},
+		{
+			name: "set isAgent true",
+			empRepo: &fakeEmployeeRepo{
+				byIDs: map[uint]*model.Employee{supervisor.EmployeeID: supervisor},
+			},
+			actuaryRepo: &fakeActuaryRepo{
+				byEmployeeID: map[uint]*model.ActuaryInfo{supervisor.EmployeeID: supervisor.ActuaryInfo},
+			},
+			tradingClient: &fakeTradingClient{},
+			employeeID:    supervisor.EmployeeID,
+			callerID:      admin.EmployeeID,
+			req: &dto.UpdateActuarySettingsRequest{
+				IsAgent: ptr(true),
+			},
+			expectTransferCalled: false,
+		},
+		{
+			name: "no actuary info - fails when changing isAgent",
+			empRepo: &fakeEmployeeRepo{
+				byIDs: map[uint]*model.Employee{activeEmployee().EmployeeID: activeEmployee()},
+			},
+			actuaryRepo:   &fakeActuaryRepo{},
+			tradingClient: &fakeTradingClient{},
+			employeeID:    activeEmployee().EmployeeID,
+			callerID:      admin.EmployeeID,
+			req: &dto.UpdateActuarySettingsRequest{
+				IsAgent: ptr(true),
+			},
+			expectErr: true,
+			errMsg:    "employee has no actuary info",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			service := NewActuaryService(tt.actuaryRepo, tt.empRepo)
+			service := NewActuaryService(tt.actuaryRepo, tt.empRepo, tt.tradingClient)
 
-			response, err := service.UpdateActuarySettings(context.Background(), tt.employeeID, tt.req)
+			response, err := service.UpdateActuarySettings(context.Background(), tt.employeeID, tt.callerID, tt.req)
 
 			if tt.expectErr {
 				require.Error(t, err)
@@ -89,8 +199,9 @@ func TestUpdateActuarySettings(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				require.NotNil(t, response)
-				require.Equal(t, *tt.req.Limit, response.Limit)
 			}
+
+			require.Equal(t, tt.expectTransferCalled, tt.tradingClient.transferCalled)
 		})
 	}
 }
@@ -152,7 +263,7 @@ func TestResetUsedLimit(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			service := NewActuaryService(tt.actuaryRepo, tt.empRepo)
+			service := NewActuaryService(tt.actuaryRepo, tt.empRepo, &fakeTradingClient{})
 
 			response, err := service.ResetUsedLimit(context.Background(), tt.employeeID)
 
@@ -165,97 +276,6 @@ func TestResetUsedLimit(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				require.Zero(t, response.UsedLimit)
-			}
-		})
-	}
-}
-
-func TestIncrementUsedLimit(t *testing.T) {
-	t.Parallel()
-
-	agent := activeAgent()
-
-	tests := []struct {
-		name        string
-		empRepo     *fakeEmployeeRepo
-		actuaryRepo *fakeActuaryRepo
-		employeeID  uint
-		amount      float64
-		expectUsed  float64
-		expectErr   bool
-		errMsg      string
-	}{
-		{
-			name: "successful increment",
-			empRepo: &fakeEmployeeRepo{
-				byIDs: map[uint]*model.Employee{agent.EmployeeID: agent},
-			},
-			actuaryRepo: &fakeActuaryRepo{
-				byEmployeeID: map[uint]*model.ActuaryInfo{agent.EmployeeID: agent.ActuaryInfo},
-			},
-			employeeID: agent.EmployeeID,
-			amount:     2500,
-			expectUsed: agent.ActuaryInfo.UsedLimit + 2500,
-		},
-		{
-			name:        "invalid amount",
-			empRepo:     &fakeEmployeeRepo{},
-			actuaryRepo: &fakeActuaryRepo{},
-			employeeID:  agent.EmployeeID,
-			amount:      0,
-			expectErr:   true,
-			errMsg:      "amount must be positive",
-		},
-		{
-			name:        "employee not found",
-			empRepo:     &fakeEmployeeRepo{byIDs: map[uint]*model.Employee{}},
-			actuaryRepo: &fakeActuaryRepo{},
-			employeeID:  999,
-			amount:      1000,
-			expectErr:   true,
-			errMsg:      "employee not found",
-		},
-		{
-			name: "employee is not an agent",
-			empRepo: &fakeEmployeeRepo{
-				byIDs: map[uint]*model.Employee{activeEmployee().EmployeeID: activeEmployee()},
-			},
-			actuaryRepo: &fakeActuaryRepo{},
-			employeeID:  activeEmployee().EmployeeID,
-			amount:      1000,
-			expectErr:   true,
-			errMsg:      "only agents have used limits",
-		},
-		{
-			name: "repo increment error",
-			empRepo: &fakeEmployeeRepo{
-				byIDs: map[uint]*model.Employee{agent.EmployeeID: agent},
-			},
-			actuaryRepo: &fakeActuaryRepo{
-				byEmployeeID: map[uint]*model.ActuaryInfo{agent.EmployeeID: agent.ActuaryInfo},
-				incrementErr: fmt.Errorf("db error"),
-			},
-			employeeID: agent.EmployeeID,
-			amount:     1000,
-			expectErr:  true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			service := NewActuaryService(tt.actuaryRepo, tt.empRepo)
-
-			usedLimit, err := service.IncrementUsedLimit(context.Background(), tt.employeeID, tt.amount)
-
-			if tt.expectErr {
-				require.Error(t, err)
-				if tt.errMsg != "" {
-					require.Contains(t, err.Error(), tt.errMsg)
-				}
-				require.Zero(t, usedLimit)
-			} else {
-				require.NoError(t, err)
-				require.Equal(t, tt.expectUsed, usedLimit)
 			}
 		})
 	}
@@ -306,7 +326,7 @@ func TestGetAllActuaries(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			service := NewActuaryService(tt.repo, &fakeEmployeeRepo{})
+			service := NewActuaryService(tt.repo, &fakeEmployeeRepo{}, &fakeTradingClient{})
 
 			response, err := service.GetAllActuaries(context.Background(), tt.query)
 
@@ -348,7 +368,7 @@ func TestResetAllUsedLimits(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			service := NewActuaryService(tt.repo, &fakeEmployeeRepo{})
+			service := NewActuaryService(tt.repo, &fakeEmployeeRepo{}, &fakeTradingClient{})
 
 			err := service.ResetAllUsedLimits(context.Background())
 

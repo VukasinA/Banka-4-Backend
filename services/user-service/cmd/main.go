@@ -10,8 +10,10 @@ import (
 	"github.com/RAF-SI-2025/Banka-4-Backend/common/pkg/db"
 	"github.com/RAF-SI-2025/Banka-4-Backend/common/pkg/jwt"
 	"github.com/RAF-SI-2025/Banka-4-Backend/common/pkg/logging"
+	"github.com/RAF-SI-2025/Banka-4-Backend/services/user-service/internal/client"
+	clientgrpc "github.com/RAF-SI-2025/Banka-4-Backend/services/user-service/internal/client/grpc"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/user-service/internal/config"
-	"github.com/RAF-SI-2025/Banka-4-Backend/services/user-service/internal/grpc"
+	servicegrpc "github.com/RAF-SI-2025/Banka-4-Backend/services/user-service/internal/grpc"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/user-service/internal/handler"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/user-service/internal/model"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/user-service/internal/permission"
@@ -42,6 +44,13 @@ func main() {
 				return permission.NewDBPermissionProvider(database)
 			},
 
+			// Trading gRPC klijent
+			client.NewTradingServiceConnection,
+			fx.Annotate(
+				clientgrpc.NewTradingServiceClient,
+				fx.As(new(client.TradingClient)),
+			),
+
 			repository.NewIdentityRepository,
 			repository.NewEmployeeRepository,
 			repository.NewActuaryRepository,
@@ -62,8 +71,8 @@ func main() {
 			handler.NewActuaryHandler,
 			handler.NewClientHandler,
 			handler.NewHealthHandler,
-			grpc.NewPermissionService,
-			grpc.NewUserService,
+			servicegrpc.NewPermissionService,
+			servicegrpc.NewUserService,
 		),
 		fx.Invoke(func(cfg *config.Configuration) error {
 			return logging.Init(cfg.Env)

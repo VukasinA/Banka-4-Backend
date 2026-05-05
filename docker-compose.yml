@@ -33,6 +33,8 @@ services:
     ports:
       - "${PORT}:${PORT}"
     env_file: .env
+    environment:
+      TRADING_SERVICE_ADDR: trading_service:50053
     depends_on:
       user_service_db:
         condition: service_healthy
@@ -73,6 +75,7 @@ services:
     env_file: .env
     environment:
       PORT: ${TRADING_SERVICE_PORT}
+      GRPC_PORT: "50053"
       USER_SERVICE_ADDR: user_service:50051
       USER_SERVICE_BASE_URL: http://user_service:${PORT}
       BANKING_SERVICE_ADDR: banking_service:50052

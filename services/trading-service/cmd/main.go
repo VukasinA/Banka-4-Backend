@@ -9,6 +9,7 @@ import (
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/client"
 	clientgrpc "github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/client/grpc"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/config"
+	tradinggrpc "github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/grpc"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/job"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/model"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/permission"
@@ -111,6 +112,7 @@ func main() {
 			repository.NewClientFundRedemptionRepository,
 			service.NewInvestmentFundService,
 			handler.NewInvestmentFundHandler,
+			tradinggrpc.NewTradingServiceServer,
 		),
 		fx.Invoke(func(cfg *config.Configuration) error {
 			return logging.Init(cfg.Env)
@@ -168,7 +170,7 @@ func main() {
 		fx.Invoke(func(db *gorm.DB) error {
 			return seed.AccumulatedTax(db)
 		}),
-		fx.Invoke(server.NewServer),
+		fx.Invoke(server.NewServer, server.NewGRPCServer),
 		fx.Invoke(func(lc fx.Lifecycle, scheduler *service.TaxScheduler) {
 			lc.Append(fx.Hook{
 				OnStart: func(ctx context.Context) error {
