@@ -223,6 +223,9 @@ type fakeFundUserClient struct {
 	getClientByIdResp *pb.GetClientByIdResponse
 	getClientByIdErr  error
 
+	getClientsByIdsResp *pb.GetClientsByIdsResponse
+	getClientsByIdsErr  error
+
 	getEmployeeByIdResp *pb.GetEmployeeByIdResponse
 	getEmployeeByIdErr  error
 
@@ -234,10 +237,17 @@ type fakeFundUserClient struct {
 
 	getIdentityByUserIdResp *pb.GetIdentityByUserIdResponse
 	getIdentityByUserIdErr  error
+
+	incrementUsedLimitResp *pb.IncrementUsedLimitResponse
+	incrementUsedLimitErr  error
 }
 
 func (f *fakeFundUserClient) GetClientById(_ context.Context, _ uint64) (*pb.GetClientByIdResponse, error) {
 	return f.getClientByIdResp, f.getClientByIdErr
+}
+
+func (f *fakeFundUserClient) GetClientsByIds(_ context.Context, _ []uint64) (*pb.GetClientsByIdsResponse, error) {
+	return f.getClientsByIdsResp, f.getClientsByIdsErr
 }
 
 func (f *fakeFundUserClient) GetClientByIdentityId(_ context.Context, _ uint64) (*pb.GetClientByIdResponse, error) {
@@ -264,6 +274,10 @@ func (f *fakeFundUserClient) GetIdentityByUserId(_ context.Context, _ uint64, _ 
 	return f.getIdentityByUserIdResp, f.getIdentityByUserIdErr
 }
 
+func (f *fakeFundUserClient) IncrementUsedLimit(ctx context.Context, employeeID uint64, amount float64) (*pb.IncrementUsedLimitResponse, error) {
+	return f.incrementUsedLimitResp, f.incrementUsedLimitErr
+}
+
 // ── Helpers ───────────────────────────────────────────────────────
 
 func fundSupervisorCtx() context.Context {
@@ -276,6 +290,9 @@ func fundSupervisorCtx() context.Context {
 }
 
 func (f *fakeUserClient) GetClientById(ctx context.Context, id uint64) (*pb.GetClientByIdResponse, error) {
+	return nil, nil
+}
+func (f *fakeUserClient) GetClientsByIds(_ context.Context, _ []uint64) (*pb.GetClientsByIdsResponse, error) {
 	return nil, nil
 }
 func (f *fakeUserClient) GetClientByIdentityId(ctx context.Context, identityId uint64) (*pb.GetClientByIdResponse, error) {
@@ -297,6 +314,9 @@ func (f *fakeUserClient) GetAllActuaries(ctx context.Context, page, pageSize int
 	return nil, nil
 }
 func (f *fakeUserClient) GetIdentityByUserId(ctx context.Context, userID uint64, userType string) (*pb.GetIdentityByUserIdResponse, error) {
+	return nil, nil
+}
+func (f *fakeUserClient) IncrementUsedLimit(ctx context.Context, employeeID uint64, amount float64) (*pb.IncrementUsedLimitResponse, error) {
 	return nil, nil
 }
 

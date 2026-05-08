@@ -109,11 +109,12 @@ type fakeActuaryRepo struct {
 	allEmployees []model.Employee
 	allTotal     int64
 
-	findErr     error
-	getAllErr   error
-	saveErr     error
-	resetErr    error
-	resetAllErr error
+	findErr      error
+	getAllErr    error
+	saveErr      error
+	incrementErr error
+	resetErr     error
+	resetAllErr  error
 }
 
 func (f *fakeActuaryRepo) FindByEmployeeID(_ context.Context, employeeID uint) (*model.ActuaryInfo, error) {
@@ -138,6 +139,18 @@ func (f *fakeActuaryRepo) Save(_ context.Context, actuary *model.ActuaryInfo) er
 	return f.saveErr
 }
 
+func (f *fakeActuaryRepo) IncrementUsedLimit(_ context.Context, employeeID uint, amount float64) (*model.ActuaryInfo, error) {
+	if f.incrementErr != nil {
+		return nil, f.incrementErr
+	}
+	if f.byEmployeeID == nil || f.byEmployeeID[employeeID] == nil {
+		return nil, nil
+	}
+
+	f.byEmployeeID[employeeID].UsedLimit += amount
+	return f.byEmployeeID[employeeID], nil
+}
+
 func (f *fakeActuaryRepo) ResetUsedLimit(_ context.Context, employeeID uint) error {
 	if f.byEmployeeID != nil && f.byEmployeeID[employeeID] != nil {
 		f.byEmployeeID[employeeID].UsedLimit = 0
@@ -158,6 +171,7 @@ func (f *fakeActuaryRepo) ResetAllUsedLimits(_ context.Context) error {
 
 type fakeClientRepo struct {
 	byID         *model.Client
+	byIDs        []model.Client
 	byIdentityID *model.Client
 	allClients   []model.Client
 	allTotal     int64
@@ -182,6 +196,10 @@ func (f *fakeClientRepo) FindByIdentityID(_ context.Context, _ uint) (*model.Cli
 
 func (f *fakeClientRepo) FindByID(_ context.Context, id uint) (*model.Client, error) {
 	return f.byID, f.findErr
+}
+
+func (f *fakeClientRepo) FindByIDs(_ context.Context, id []uint) ([]model.Client, error) {
+	return f.byIDs, f.findErr
 }
 
 func (f *fakeClientRepo) FindAll(_ context.Context, _ *dto.ListClientsQuery) ([]model.Client, int64, error) {

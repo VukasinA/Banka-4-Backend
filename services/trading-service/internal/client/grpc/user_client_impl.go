@@ -24,6 +24,14 @@ func (c *UserServiceClient) GetClientById(ctx context.Context, id uint64) (*pb.G
 	return resp, nil
 }
 
+func (c *UserServiceClient) GetClientsByIds(ctx context.Context, ids []uint64) (*pb.GetClientsByIdsResponse, error) {
+	resp, err := c.stub.GetClientsByIds(ctx, &pb.GetClientsByIdsRequest{Ids: ids})
+	if err != nil {
+		return nil, fmt.Errorf("user client GetClientsByIds: %w", err)
+	}
+	return resp, nil
+}
+
 func (c *UserServiceClient) GetEmployeeById(ctx context.Context, id uint64) (*pb.GetEmployeeByIdResponse, error) {
 	resp, err := c.stub.GetEmployeeById(ctx, &pb.GetEmployeeByIdRequest{Id: id})
 	if err != nil {
@@ -74,6 +82,17 @@ func (c *UserServiceClient) GetIdentityByUserId(ctx context.Context, userID uint
 	})
 	if err != nil {
 		return nil, fmt.Errorf("user client GetIdentityByUserId: %w", err)
+	}
+	return resp, nil
+}
+
+func (c *UserServiceClient) IncrementUsedLimit(ctx context.Context, employeeID uint64, amount float64) (*pb.IncrementUsedLimitResponse, error) {
+	resp, err := c.stub.IncrementUsedLimit(ctx, &pb.IncrementUsedLimitRequest{
+		EmployeeId: employeeID,
+		Amount:     amount,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("user client IncrementUsedLimit: %w", err)
 	}
 	return resp, nil
 }

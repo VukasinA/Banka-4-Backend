@@ -19,6 +19,10 @@ func (f *fakeOTCUserClient) GetClientById(_ context.Context, id uint64) (*pb.Get
 	return &pb.GetClientByIdResponse{Id: id, FullName: "Test Client"}, nil
 }
 
+func (f *fakeOTCUserClient) GetClientsByIds(_ context.Context, ids []uint64) (*pb.GetClientsByIdsResponse, error) {
+	return nil, nil
+}
+
 func (f *fakeOTCUserClient) GetEmployeeById(_ context.Context, id uint64) (*pb.GetEmployeeByIdResponse, error) {
 	return &pb.GetEmployeeByIdResponse{Id: id, FullName: "Test Employee"}, nil
 }
@@ -40,6 +44,10 @@ func (f *fakeOTCUserClient) GetAllActuaries(_ context.Context, _, _ int32, _, _ 
 }
 
 func (f *fakeOTCUserClient) GetIdentityByUserId(_ context.Context, id uint64, _ string) (*pb.GetIdentityByUserIdResponse, error) {
+	return nil, nil
+}
+
+func (f *fakeOTCUserClient) IncrementUsedLimit(ctx context.Context, employeeID uint64, amount float64) (*pb.IncrementUsedLimitResponse, error) {
 	return nil, nil
 }
 

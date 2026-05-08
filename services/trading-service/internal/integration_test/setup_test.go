@@ -113,6 +113,12 @@ func (f *fakeUserClient) GetClientById(_ context.Context, id uint64) (*pb.GetCli
 	}, nil
 }
 
+func (f *fakeUserClient) GetClientsByIds(_ context.Context, ids []uint64) (*pb.GetClientsByIdsResponse, error) {
+	return &pb.GetClientsByIdsResponse{
+		Clients: make([]*pb.GetClientByIdResponse, 0),
+	}, nil
+}
+
 func (f *fakeUserClient) GetEmployeeById(_ context.Context, id uint64) (*pb.GetEmployeeByIdResponse, error) {
 	isSupervisor := f.supervisorIDs[id]
 	isAgent := f.agentIDs[id]
@@ -168,6 +174,10 @@ func (f *fakeUserClient) GetAllActuaries(_ context.Context, _, _ int32, _, _ str
 
 func (c *fakeUserClient) GetIdentityByUserId(_ context.Context, _ uint64, _ string) (*pb.GetIdentityByUserIdResponse, error) {
 	return c.identityResp, c.identityErr
+}
+
+func (c *fakeUserClient) IncrementUsedLimit(_ context.Context, _ uint64, _ float64) (*pb.IncrementUsedLimitResponse, error) {
+	return nil, nil
 }
 
 type fakeTaxRecorder struct{}
@@ -317,7 +327,7 @@ func setupTestRouterWithPermissions(t *testing.T, db *gorm.DB, perms []permissio
 
 	taxSvc := service.NewTaxService(taxRepo, bankingClient, cfg)
 	otcSvc := service.NewOTCService(assetOwnershipRepo, listingRepo, userClient)
-	otcOfferSvc := service.NewOtcOfferService(otcOfferRepo, otcContractRepo, assetOwnershipRepo, stockRepo, bankingClient)
+	otcOfferSvc := service.NewOtcOfferService(otcOfferRepo, otcContractRepo, assetOwnershipRepo, stockRepo, bankingClient, userClient)
 
 	healthHandler := handler.NewHealthHandler()
 	exchangeHandler := handler.NewExchangeHandler(exchangeSvc)
@@ -480,6 +490,7 @@ func seedOption(t *testing.T, db *gorm.DB, listingID, stockID uint) *model.Optio
 func seedOrder(t *testing.T, db *gorm.DB, userID, listingID uint, direction model.OrderDirection, status model.OrderStatus) *model.Order {
 	t.Helper()
 
+	ppu := 5.0
 	order := &model.Order{
 		OrderOwnerUserID: userID,
 		AccountNumber:    "444000100000000001",
@@ -488,6 +499,7 @@ func seedOrder(t *testing.T, db *gorm.DB, userID, listingID uint, direction mode
 		Direction:        direction,
 		Quantity:         10,
 		ContractSize:     1,
+		PricePerUnit:     &ppu,
 		Status:           status,
 		CreatedAt:        time.Now(),
 		UpdatedAt:        time.Now(),

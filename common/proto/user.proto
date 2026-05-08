@@ -6,12 +6,14 @@ option go_package = "common/pkg/pb;pb";
 
 service UserService {
   rpc GetClientById(GetClientByIdRequest)                 returns (GetClientByIdResponse);
-  rpc GetClientByIdentityId(GetClientByIdentityIdRequest)   returns (GetClientByIdResponse);
+  rpc GetClientsByIds(GetClientsByIdsRequest)             returns (GetClientsByIdsResponse);
+  rpc GetClientByIdentityId(GetClientByIdentityIdRequest) returns (GetClientByIdResponse);
   rpc GetEmployeeById(GetEmployeeByIdRequest)             returns (GetEmployeeByIdResponse);
   rpc GetEmployeeByIdentityId(GetEmployeeByIdentityIdRequest) returns (GetEmployeeByIdResponse);
   rpc GetAllClients(GetAllClientsRequest)                 returns (GetAllClientsResponse);
   rpc GetAllActuaries(GetAllActuariesRequest)             returns (GetAllActuariesResponse);
   rpc GetIdentityByUserId(GetIdentityByUserIdRequest) returns (GetIdentityByUserIdResponse);
+  rpc IncrementUsedLimit(IncrementUsedLimitRequest)   returns (IncrementUsedLimitResponse);
 }
 
 
@@ -22,6 +24,14 @@ message GetClientByIdResponse {
   string email       = 2;
   string full_name   = 3;
   uint64 identity_id = 4;
+}
+
+
+message GetClientsByIdsRequest   { 
+  repeated uint64 ids = 1; 
+}
+message GetClientsByIdsResponse {
+  repeated GetClientByIdResponse clients = 1;
 }
 
 message GetEmployeeByIdRequest     { uint64 id      = 1; }
@@ -93,4 +103,13 @@ message GetIdentityByUserIdRequest {
 
 message GetIdentityByUserIdResponse {
   uint64 identity_id = 1;
+}
+
+message IncrementUsedLimitRequest {
+  uint64 employee_id = 1;
+  double amount      = 2;
+}
+
+message IncrementUsedLimitResponse {
+  double used_limit = 1;
 }

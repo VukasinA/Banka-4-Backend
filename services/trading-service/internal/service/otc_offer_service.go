@@ -41,6 +41,7 @@ type OtcOfferService struct {
 	assetOwnershipRepo repository.AssetOwnershipRepository
 	stockRepo          repository.StockRepository
 	bankingClient      client.BankingClient
+	userClient         client.UserServiceClient
 	now                func() time.Time
 }
 
@@ -50,6 +51,7 @@ func NewOtcOfferService(
 	assetOwnershipRepo repository.AssetOwnershipRepository,
 	stockRepo repository.StockRepository,
 	bankingClient client.BankingClient,
+	userClient client.UserServiceClient,
 ) *OtcOfferService {
 	return &OtcOfferService{
 		offerRepo:          offerRepo,
@@ -57,6 +59,7 @@ func NewOtcOfferService(
 		assetOwnershipRepo: assetOwnershipRepo,
 		stockRepo:          stockRepo,
 		bankingClient:      bankingClient,
+		userClient:         userClient,
 		now:                time.Now,
 	}
 }
@@ -347,13 +350,99 @@ func (s *OtcOfferService) GetActiveOffersForUser(ctx context.Context, userID uin
 	return offers, nil
 }
 
-// GetOptionContractsForUser returns all option contracts in which the given user participates.
-func (s *OtcOfferService) GetOptionContractsForUser(ctx context.Context, userID uint) ([]model.OtcOptionContract, error) {
+func (s *OtcOfferService) GetOptionContractsForUser(
+	ctx context.Context,
+	userID uint,
+) ([]dto.OtcOptionContractResponse, error) {
+
 	contracts, err := s.optionContractRepo.FindForUser(ctx, userID)
 	if err != nil {
 		return nil, errors.InternalErr(err)
 	}
-	return contracts, nil
+
+	// --- 1. Collect AssetIDs + UserIDs ---
+	assetIDSet := make(map[uint]struct{})
+	userIDSet := make(map[uint64]struct{})
+
+	for _, c := range contracts {
+		assetIDSet[c.StockAssetID] = struct{}{}
+
+		userIDSet[uint64(c.BuyerID)] = struct{}{}
+		userIDSet[uint64(c.SellerID)] = struct{}{}
+	}
+
+	assetIDs := make([]uint, 0, len(assetIDSet))
+	for id := range assetIDSet {
+		assetIDs = append(assetIDs, id)
+	}
+
+	userIDs := make([]uint64, 0, len(userIDSet))
+	for id := range userIDSet {
+		userIDs = append(userIDs, id)
+	}
+
+	// --- 2. Fetch stocks ---
+	stocks, err := s.stockRepo.FindByAssetIDs(ctx, assetIDs)
+	if err != nil {
+		return nil, errors.InternalErr(err)
+	}
+
+	// --- 3. Build market data map ---
+	type marketData struct {
+		price    float64
+		currency string
+	}
+	dataMap := make(map[uint]marketData)
+
+	for _, stock := range stocks {
+		if stock.Listing != nil {
+			md := marketData{
+				price: stock.Listing.Price,
+			}
+			if stock.Listing.Exchange != nil {
+				md.currency = stock.Listing.Exchange.Currency
+			}
+			dataMap[stock.AssetID] = md
+		}
+	}
+
+	// --- 4. Fetch users (BATCH) ---
+	userResp, err := s.userClient.GetClientsByIds(ctx, userIDs)
+	if err != nil {
+		return nil, errors.InternalErr(err)
+	}
+
+	userMap := make(map[uint64]string)
+	for _, u := range userResp.Clients {
+		userMap[u.Id] = u.FullName
+	}
+
+	// --- 5. Convert to DTO ---
+	resp := dto.ToOtcOptionContractResponseList(contracts)
+
+	// --- 6. Inject everything ---
+	for i := range resp {
+		assetID := resp[i].StockAssetID
+
+		// Market data
+		if md, ok := dataMap[assetID]; ok {
+			resp[i].CurrentPrice = &md.price
+			resp[i].ListingCurrency = md.currency
+		} else {
+			resp[i].CurrentPrice = nil
+			resp[i].ListingCurrency = ""
+		}
+
+		// User data
+		resp[i].BuyerFullName = userMap[uint64(resp[i].BuyerID)]
+		resp[i].SellerFullName = userMap[uint64(resp[i].SellerID)]
+
+		// TODO Change this when communication with other banks is impleemented
+		resp[i].BuyerBank = "Banka 4"
+		resp[i].SellerBank = "Banka 4"
+	}
+
+	return resp, nil
 }
 
 // --- helpers ---
