@@ -60,22 +60,23 @@ func (s *ActuaryService) UpdateActuarySettings(ctx context.Context, employeeID u
 	wasSupervisor := employee.IsSupervisor()
 
 	actuary := employee.ActuaryInfo
-	if actuary == nil {
-		return nil, errors.BadRequestErr("employee has no actuary info")
-	}
 
 	if req.Limit != nil || req.NeedApproval != nil {
 		if !employee.IsAgent() {
 			return nil, errors.BadRequestErr("only agents have configurable limits")
 		}
-		if req.Limit != nil {
-			actuary.Limit = *req.Limit
-		}
-		if req.NeedApproval != nil {
-			actuary.NeedApproval = *req.NeedApproval
-		}
 	}
 
+	if actuary == nil {
+		return nil, errors.BadRequestErr("employee has no actuary info")
+	}
+
+	if req.Limit != nil {
+		actuary.Limit = *req.Limit
+	}
+	if req.NeedApproval != nil {
+		actuary.NeedApproval = *req.NeedApproval
+	}
 	if req.IsAgent != nil {
 		actuary.IsAgent = *req.IsAgent
 	}
