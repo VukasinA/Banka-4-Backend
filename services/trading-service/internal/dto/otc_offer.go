@@ -10,8 +10,8 @@ import (
 type CreateOtcOfferRequest struct {
 	AssetOwnershipID   uint      `json:"asset_ownership_id" binding:"required"`
 	Amount             int       `json:"amount" binding:"required,gt=0"`
-	PricePerStock      float64   `json:"price_per_stock" binding:"required,gt=0"`
-	Premium            float64   `json:"premium" binding:"required,gt=0"`
+	PricePerStockRSD   float64   `json:"price_per_stock_rsd" binding:"required,gt=0"`
+	PremiumRSD         float64   `json:"premium_rsd" binding:"required,gt=0"`
 	SettlementDate     time.Time `json:"settlement_date" binding:"required"`
 	BuyerAccountNumber string    `json:"buyer_account_number" binding:"required"`
 }
@@ -20,11 +20,11 @@ type CreateOtcOfferRequest struct {
 // AccountNumber je opcioni: prodavac ga šalje samo prvi put da bi postavio
 // SellerAccountNumber na ponudi (potreban za kasniji premium transfer).
 type CounterOfferRequest struct {
-	Amount         int       `json:"amount" binding:"required,gt=0"`
-	PricePerStock  float64   `json:"price_per_stock" binding:"required,gt=0"`
-	Premium        float64   `json:"premium" binding:"required,gt=0"`
-	SettlementDate time.Time `json:"settlement_date" binding:"required"`
-	AccountNumber  *string   `json:"account_number,omitempty"`
+	Amount           int       `json:"amount" binding:"required,gt=0"`
+	PricePerStockRSD float64   `json:"price_per_stock_rsd" binding:"required,gt=0"`
+	PremiumRSD       float64   `json:"premium_rsd" binding:"required,gt=0"`
+	SettlementDate   time.Time `json:"settlement_date" binding:"required"`
+	AccountNumber    *string   `json:"account_number,omitempty"`
 }
 
 // AcceptOfferRequest — strana suprotna od ModifiedBy prihvata ponudu.
@@ -49,8 +49,8 @@ type OtcOfferResponse struct {
 	Ticker              string               `json:"ticker,omitempty"`
 	StockName           string               `json:"stock_name,omitempty"`
 	Amount              int                  `json:"amount"`
-	PricePerStock       float64              `json:"price_per_stock"`
-	Premium             float64              `json:"premium"`
+	PricePerStockRSD    float64              `json:"price_per_stock_rsd"`
+	PremiumRSD          float64              `json:"premium_rsd"`
 	SettlementDate      time.Time            `json:"settlement_date"`
 	BuyerAccountNumber  string               `json:"buyer_account_number"`
 	SellerAccountNumber *string              `json:"seller_account_number,omitempty"`
@@ -78,10 +78,10 @@ type OtcOptionContractResponse struct {
 	Ticker              string                        `json:"ticker,omitempty"`
 	StockName           string                        `json:"stock_name,omitempty"`
 	Amount              int                           `json:"amount"`
+	StrikePriceRSD      float64                       `json:"strike_price_rsd"`
+	PremiumRSD          float64                       `json:"premium_rsd"`
 	ListingCurrency     string                        `json:"listing_currency"`
-	StrikePrice         float64                       `json:"strike_price"`
 	CurrentPrice        *float64                      `json:"current_price"`
-	Premium             float64                       `json:"premium"`
 	SettlementDate      time.Time                     `json:"settlement_date"`
 	BuyerAccountNumber  string                        `json:"buyer_account_number"`
 	SellerAccountNumber string                        `json:"seller_account_number"`
@@ -111,8 +111,8 @@ func ToOtcOfferResponse(o model.OtcOffer) OtcOfferResponse {
 		SellerID:            o.SellerID,
 		StockAssetID:        o.StockAssetID,
 		Amount:              o.Amount,
-		PricePerStock:       o.PricePerStock,
-		Premium:             o.Premium,
+		PricePerStockRSD:    o.PricePerStockRSD,
+		PremiumRSD:          o.PremiumRSD,
 		SettlementDate:      o.SettlementDate,
 		BuyerAccountNumber:  o.BuyerAccountNumber,
 		SellerAccountNumber: o.SellerAccountNumber,
@@ -146,8 +146,8 @@ func ToOtcOptionContractResponse(c model.OtcOptionContract) OtcOptionContractRes
 		SellerID:            c.SellerID,
 		StockAssetID:        c.StockAssetID,
 		Amount:              c.Amount,
-		StrikePrice:         c.StrikePrice,
-		Premium:             c.Premium,
+		StrikePriceRSD:      c.StrikePriceRSD,
+		PremiumRSD:          c.PremiumRSD,
 		SettlementDate:      c.SettlementDate,
 		BuyerAccountNumber:  c.BuyerAccountNumber,
 		SellerAccountNumber: c.SellerAccountNumber,

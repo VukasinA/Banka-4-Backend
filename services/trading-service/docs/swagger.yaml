@@ -51,16 +51,16 @@ definitions:
         type: string
       amount:
         type: integer
-      premium:
+      premium_rsd:
         type: number
-      price_per_stock:
+      price_per_stock_rsd:
         type: number
       settlement_date:
         type: string
     required:
     - amount
-    - premium
-    - price_per_stock
+    - premium_rsd
+    - price_per_stock_rsd
     - settlement_date
     type: object
   dto.CreateFundOrderRequest:
@@ -176,9 +176,9 @@ definitions:
         type: integer
       buyer_account_number:
         type: string
-      premium:
+      premium_rsd:
         type: number
-      price_per_stock:
+      price_per_stock_rsd:
         type: number
       settlement_date:
         type: string
@@ -186,8 +186,8 @@ definitions:
     - amount
     - asset_ownership_id
     - buyer_account_number
-    - premium
-    - price_per_stock
+    - premium_rsd
+    - price_per_stock_rsd
     - settlement_date
     type: object
   dto.DailyPriceResponse:
@@ -761,9 +761,9 @@ definitions:
         type: integer
       otc_offer_id:
         type: integer
-      premium:
+      premium_rsd:
         type: number
-      price_per_stock:
+      price_per_stock_rsd:
         type: number
       seller_account_number:
         type: string
@@ -806,7 +806,7 @@ definitions:
         type: integer
       otc_option_contract_id:
         type: integer
-      premium:
+      premium_rsd:
         type: number
       seller_account_number:
         type: string
@@ -824,7 +824,7 @@ definitions:
         type: integer
       stock_name:
         type: string
-      strike_price:
+      strike_price_rsd:
         type: number
       ticker:
         type: string
@@ -2703,8 +2703,8 @@ paths:
     put:
       consumes:
       - application/json
-      description: Either party may update the offer parameters (amount, price, premium,
-        settlement date).
+      description: Either party may update the offer parameters (amount, price in
+        RSD, premium in RSD, settlement date).
       parameters:
       - description: Offer ID
         in: path

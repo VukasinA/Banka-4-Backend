@@ -52,7 +52,7 @@ func (h *OtcOfferHandler) CreateOffer(c *gin.Context) {
 // SendCounterOffer updates the negotiation parameters on behalf of either party.
 //
 // @Summary     Send counter-offer
-// @Description Either party may update the offer parameters (amount, price, premium, settlement date).
+// @Description Either party may update the offer parameters (amount, price in RSD, premium in RSD, settlement date).
 //
 //	Parties alternate turns — the same user cannot send two consecutive counter-offers.
 //
@@ -86,12 +86,12 @@ func (h *OtcOfferHandler) SendCounterOffer(c *gin.Context) {
 	c.JSON(http.StatusOK, dto.ToOtcOfferResponse(*offer))
 }
 
-// AcceptOffer accepts the current offer, creating an option contract and transferring the premium.
+// AcceptOffer accepts the current offer, creating an option contract and transferring the premium in RSD.
 //
 // @Summary     Accept OTC offer
 // @Description The party opposite to ModifiedBy accepts the offer. An option contract is created
 //
-//	and the premium is immediately transferred from the buyer's account to the seller's.
+//	and the premium in RSD is immediately transferred from the buyer's account to the seller's.
 //	If the seller has not yet provided their account number, it must be supplied here.
 //
 // @Tags        otc

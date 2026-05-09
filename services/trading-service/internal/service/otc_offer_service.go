@@ -21,7 +21,7 @@ import (
 //  1. An active offer and an option contract are TWO DISTINCT entities. Negotiation
 //     happens on OtcOffer; OtcOptionContract is only created upon acceptance.
 //
-//  2. A counter-offer UPDATES the existing OtcOffer (Amount, Price, Premium,
+//  2. A counter-offer UPDATES the existing OtcOffer (Amount, PricePerStockRSD, PremiumRSD,
 //     SettlementDate, ModifiedBy, LastModified). The parties never change.
 //
 //  3. Counter-offers alternate between parties. The same user cannot send two
@@ -116,8 +116,8 @@ func (s *OtcOfferService) CreateOffer(ctx context.Context, req dto.CreateOtcOffe
 		SellerID:           assetOwnership.UserId,
 		StockAssetID:       assetOwnership.AssetID,
 		Amount:             req.Amount,
-		PricePerStock:      req.PricePerStock,
-		Premium:            req.Premium,
+		PricePerStockRSD:   req.PricePerStockRSD,
+		PremiumRSD:         req.PremiumRSD,
 		SettlementDate:     req.SettlementDate,
 		BuyerAccountNumber: req.BuyerAccountNumber,
 		Status:             model.OtcOfferStatusActive,
@@ -190,8 +190,8 @@ func (s *OtcOfferService) SendCounterOffer(ctx context.Context, offerID uint, re
 	}
 
 	offer.Amount = req.Amount
-	offer.PricePerStock = req.PricePerStock
-	offer.Premium = req.Premium
+	offer.PricePerStockRSD = req.PricePerStockRSD
+	offer.PremiumRSD = req.PremiumRSD
 	offer.SettlementDate = req.SettlementDate
 	offer.LastModified = s.now()
 	offer.ModifiedBy = callerID

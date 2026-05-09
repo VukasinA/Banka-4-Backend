@@ -151,7 +151,7 @@ func (s *OtcDealProcessingService) FinalizeAgreement(ctx context.Context, offerI
 	if _, err := s.bankingClient.CreatePaymentWithoutVerification(ctx, &pb.CreatePaymentRequest{
 		PayerAccountNumber:     offerSnapshot.BuyerAccountNumber,
 		RecipientAccountNumber: *offerSnapshot.SellerAccountNumber,
-		Amount:                 offerSnapshot.Premium,
+		Amount:                 offerSnapshot.PremiumRSD,
 		PaymentCode:            "289",
 		Purpose:                fmt.Sprintf("OTC premium for offer #%d", offerSnapshot.OtcOfferID),
 	}); err != nil {
@@ -193,8 +193,8 @@ func (s *OtcDealProcessingService) FinalizeAgreement(ctx context.Context, offerI
 			SellerID:            offer.SellerID,
 			StockAssetID:        offer.StockAssetID,
 			Amount:              offer.Amount,
-			StrikePrice:         offer.PricePerStock,
-			Premium:             offer.Premium,
+			StrikePriceRSD:      offer.PricePerStockRSD,
+			PremiumRSD:          offer.PremiumRSD,
 			SettlementDate:      offer.SettlementDate,
 			BuyerAccountNumber:  offer.BuyerAccountNumber,
 			SellerAccountNumber: *offer.SellerAccountNumber,
@@ -493,7 +493,7 @@ func (s *OtcDealProcessingService) reserveFunds(ctx context.Context, execution *
 		ExecutionId:         execution.ExecutionKey,
 		BuyerAccountNumber:  execution.Contract.BuyerAccountNumber,
 		SellerAccountNumber: execution.Contract.SellerAccountNumber,
-		Amount:              float64(execution.Contract.Amount) * execution.Contract.StrikePrice,
+		Amount:              float64(execution.Contract.Amount) * execution.Contract.StrikePriceRSD,
 		CurrencyCode:        "RSD",
 	})
 
@@ -678,7 +678,7 @@ func (s *OtcDealProcessingService) transferOwnership(ctx context.Context, execut
 
 		newAmount := buyerOwnership.Amount + quantity
 		if newAmount > 0 {
-			buyerOwnership.AvgBuyPriceRSD = (buyerOwnership.AvgBuyPriceRSD*buyerOwnership.Amount + contract.StrikePrice*quantity) / newAmount
+			buyerOwnership.AvgBuyPriceRSD = (buyerOwnership.AvgBuyPriceRSD*buyerOwnership.Amount + contract.StrikePriceRSD*quantity) / newAmount
 		}
 
 		buyerOwnership.Amount = newAmount
@@ -933,7 +933,7 @@ func (s *OtcDealProcessingService) compensatePremiumTransfer(ctx context.Context
 	_, err := s.bankingClient.CreatePaymentWithoutVerification(ctx, &pb.CreatePaymentRequest{
 		PayerAccountNumber:     *offer.SellerAccountNumber,
 		RecipientAccountNumber: offer.BuyerAccountNumber,
-		Amount:                 offer.Premium,
+		Amount:                 offer.PremiumRSD,
 		PaymentCode:            "289",
 		Purpose:                fmt.Sprintf("OTC premium compensation for offer #%d", offer.OtcOfferID),
 	})

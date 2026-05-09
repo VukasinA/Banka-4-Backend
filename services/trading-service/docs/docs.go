@@ -2321,7 +2321,7 @@ const docTemplate = `{
         },
         "/api/otc/offers/{id}/counter": {
             "put": {
-                "description": "Either party may update the offer parameters (amount, price, premium, settlement date).",
+                "description": "Either party may update the offer parameters (amount, price in RSD, premium in RSD, settlement date).",
                 "consumes": [
                     "application/json"
                 ],
@@ -2797,8 +2797,8 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "amount",
-                "premium",
-                "price_per_stock",
+                "premium_rsd",
+                "price_per_stock_rsd",
                 "settlement_date"
             ],
             "properties": {
@@ -2808,10 +2808,10 @@ const docTemplate = `{
                 "amount": {
                     "type": "integer"
                 },
-                "premium": {
+                "premium_rsd": {
                     "type": "number"
                 },
-                "price_per_stock": {
+                "price_per_stock_rsd": {
                     "type": "number"
                 },
                 "settlement_date": {
@@ -2985,8 +2985,8 @@ const docTemplate = `{
                 "amount",
                 "asset_ownership_id",
                 "buyer_account_number",
-                "premium",
-                "price_per_stock",
+                "premium_rsd",
+                "price_per_stock_rsd",
                 "settlement_date"
             ],
             "properties": {
@@ -2999,10 +2999,10 @@ const docTemplate = `{
                 "buyer_account_number": {
                     "type": "string"
                 },
-                "premium": {
+                "premium_rsd": {
                     "type": "number"
                 },
-                "price_per_stock": {
+                "price_per_stock_rsd": {
                     "type": "number"
                 },
                 "settlement_date": {
@@ -3873,10 +3873,10 @@ const docTemplate = `{
                 "otc_offer_id": {
                     "type": "integer"
                 },
-                "premium": {
+                "premium_rsd": {
                     "type": "number"
                 },
-                "price_per_stock": {
+                "price_per_stock_rsd": {
                     "type": "number"
                 },
                 "seller_account_number": {
@@ -3941,7 +3941,7 @@ const docTemplate = `{
                 "otc_option_contract_id": {
                     "type": "integer"
                 },
-                "premium": {
+                "premium_rsd": {
                     "type": "number"
                 },
                 "seller_account_number": {
@@ -3968,7 +3968,7 @@ const docTemplate = `{
                 "stock_name": {
                     "type": "string"
                 },
-                "strike_price": {
+                "strike_price_rsd": {
                     "type": "number"
                 },
                 "ticker": {

@@ -92,11 +92,11 @@ func TestOTC_CreateOffer_Success(t *testing.T) {
 	setPublicAmount(t, db, ownership.AssetOwnershipID, 100, 0)
 
 	body := map[string]any{
-		"asset_ownership_id": ownership.AssetOwnershipID,
-		"amount":             10,
-		"price_per_stock":    50.0,
-		"premium":            5.0,
-		"settlement_date":    time.Now().Add(30 * 24 * time.Hour).Format(time.RFC3339),
+		"asset_ownership_id":  ownership.AssetOwnershipID,
+		"amount":              10,
+		"price_per_stock_rsd": 50.0,
+		"premium_rsd":         5.0,
+		"settlement_date":     time.Now().Add(30 * 24 * time.Hour).Format(time.RFC3339),
 		// "buyer-acc" resolves to clientID=10 via fakeBankingClient
 		"buyer_account_number": "buyer-acc",
 	}
@@ -123,11 +123,11 @@ func TestOTC_CreateOffer_SelfOffer_BadRequest(t *testing.T) {
 	setPublicAmount(t, db, ownership.AssetOwnershipID, 100, 0)
 
 	body := map[string]any{
-		"asset_ownership_id": ownership.AssetOwnershipID,
-		"amount":             5,
-		"price_per_stock":    50.0,
-		"premium":            5.0,
-		"settlement_date":    time.Now().Add(30 * 24 * time.Hour).Format(time.RFC3339),
+		"asset_ownership_id":  ownership.AssetOwnershipID,
+		"amount":              5,
+		"price_per_stock_rsd": 50.0,
+		"premium_rsd":         5.0,
+		"settlement_date":     time.Now().Add(30 * 24 * time.Hour).Format(time.RFC3339),
 		// "buyer-acc" resolves to clientID=10 — same as seller (identityID=10) → self-offer
 		"buyer_account_number": "buyer-acc",
 	}
@@ -145,8 +145,8 @@ func TestOTC_CreateOffer_Unauthorized(t *testing.T) {
 	body := map[string]any{
 		"asset_ownership_id":   1,
 		"amount":               5,
-		"price_per_stock":      50.0,
-		"premium":              5.0,
+		"price_per_stock_rsd":  50.0,
+		"premium_rsd":          5.0,
 		"settlement_date":      time.Now().Add(time.Hour * 24).Format(time.RFC3339),
 		"buyer_account_number": "buyer-acc",
 	}
@@ -169,8 +169,8 @@ func TestOTC_SendCounterOffer_Success(t *testing.T) {
 	offerBody := map[string]any{
 		"asset_ownership_id":   ownership.AssetOwnershipID,
 		"amount":               10,
-		"price_per_stock":      50.0,
-		"premium":              5.0,
+		"price_per_stock_rsd":  50.0,
+		"premium_rsd":          5.0,
 		"settlement_date":      time.Now().Add(30 * 24 * time.Hour).Format(time.RFC3339),
 		"buyer_account_number": "buyer-acc", // resolves to clientID=10
 	}
@@ -181,11 +181,11 @@ func TestOTC_SendCounterOffer_Success(t *testing.T) {
 
 	// Seller (identityID=20) sends counter-offer; "seller-acc" resolves to clientID=20
 	counterBody := map[string]any{
-		"amount":          8,
-		"price_per_stock": 55.0,
-		"premium":         6.0,
-		"settlement_date": time.Now().Add(30 * 24 * time.Hour).Format(time.RFC3339),
-		"account_number":  "seller-acc", // resolves to clientID=20
+		"amount":              8,
+		"price_per_stock_rsd": 55.0,
+		"premium_rsd":         6.0,
+		"settlement_date":     time.Now().Add(30 * 24 * time.Hour).Format(time.RFC3339),
+		"account_number":      "seller-acc", // resolves to clientID=20
 	}
 	rec = performRequest(t, router, http.MethodPut, fmt.Sprintf("/api/otc/offers/%d/counter", offerID), counterBody, clientAuthHeader(t, 20, 20))
 	requireStatus(t, rec, http.StatusOK)
@@ -207,8 +207,8 @@ func TestOTC_SendCounterOffer_SameUserTwice_BadRequest(t *testing.T) {
 	offerBody := map[string]any{
 		"asset_ownership_id":   ownership.AssetOwnershipID,
 		"amount":               10,
-		"price_per_stock":      50.0,
-		"premium":              5.0,
+		"price_per_stock_rsd":  50.0,
+		"premium_rsd":          5.0,
 		"settlement_date":      time.Now().Add(30 * 24 * time.Hour).Format(time.RFC3339),
 		"buyer_account_number": "buyer-acc", // resolves to clientID=10
 	}
@@ -219,10 +219,10 @@ func TestOTC_SendCounterOffer_SameUserTwice_BadRequest(t *testing.T) {
 
 	// Buyer (identityID=10) tries to counter their own offer → bad request
 	counterBody := map[string]any{
-		"amount":          9,
-		"price_per_stock": 50.0,
-		"premium":         5.0,
-		"settlement_date": time.Now().Add(30 * 24 * time.Hour).Format(time.RFC3339),
+		"amount":              9,
+		"price_per_stock_rsd": 50.0,
+		"premium_rsd":         5.0,
+		"settlement_date":     time.Now().Add(30 * 24 * time.Hour).Format(time.RFC3339),
 	}
 	rec = performRequest(t, router, http.MethodPut, fmt.Sprintf("/api/otc/offers/%d/counter", offerID), counterBody, clientAuthHeader(t, 10, 10))
 	requireStatus(t, rec, http.StatusBadRequest)
@@ -241,8 +241,8 @@ func TestOTC_AcceptOffer_Success_CreatesContract(t *testing.T) {
 	offerBody := map[string]any{
 		"asset_ownership_id":   ownership.AssetOwnershipID,
 		"amount":               10,
-		"price_per_stock":      50.0,
-		"premium":              5.0,
+		"price_per_stock_rsd":  50.0,
+		"premium_rsd":          5.0,
 		"settlement_date":      time.Now().Add(30 * 24 * time.Hour).Format(time.RFC3339),
 		"buyer_account_number": "buyer-acc", // resolves to clientID=10
 	}
@@ -259,7 +259,7 @@ func TestOTC_AcceptOffer_Success_CreatesContract(t *testing.T) {
 	contract := decodeResponse[map[string]any](t, rec)
 	require.NotNil(t, contract["otc_option_contract_id"])
 	assert.Equal(t, float64(10), contract["amount"])
-	assert.Equal(t, float64(50.0), contract["strike_price"])
+	assert.Equal(t, float64(50.0), contract["strike_price_rsd"])
 
 	var updatedOwnership model.AssetOwnership
 	err := db.Where("user_id = ? AND owner_type = ? AND asset_id = ?", 20, model.OwnerTypeClient, asset.AssetID).
@@ -280,8 +280,8 @@ func TestOTC_AcceptOffer_BuyerCannotAcceptOwnOffer(t *testing.T) {
 	offerBody := map[string]any{
 		"asset_ownership_id":   ownership.AssetOwnershipID,
 		"amount":               10,
-		"price_per_stock":      50.0,
-		"premium":              5.0,
+		"price_per_stock_rsd":  50.0,
+		"premium_rsd":          5.0,
 		"settlement_date":      time.Now().Add(30 * 24 * time.Hour).Format(time.RFC3339),
 		"buyer_account_number": "buyer-acc", // resolves to clientID=10
 	}
@@ -307,8 +307,8 @@ func TestOTC_RejectOffer_Success(t *testing.T) {
 	offerBody := map[string]any{
 		"asset_ownership_id":   ownership.AssetOwnershipID,
 		"amount":               10,
-		"price_per_stock":      50.0,
-		"premium":              5.0,
+		"price_per_stock_rsd":  50.0,
+		"premium_rsd":          5.0,
 		"settlement_date":      time.Now().Add(30 * 24 * time.Hour).Format(time.RFC3339),
 		"buyer_account_number": "buyer-acc", // resolves to clientID=10
 	}
@@ -338,8 +338,8 @@ func TestOTC_GetMyActiveOffers_ReturnsOnlyOwnOffers(t *testing.T) {
 		body := map[string]any{
 			"asset_ownership_id":   ownership.AssetOwnershipID,
 			"amount":               5,
-			"price_per_stock":      50.0,
-			"premium":              5.0,
+			"price_per_stock_rsd":  50.0,
+			"premium_rsd":          5.0,
 			"settlement_date":      time.Now().Add(30 * 24 * time.Hour).Format(time.RFC3339),
 			"buyer_account_number": "buyer-acc", // resolves to clientID=10
 		}
@@ -373,8 +373,8 @@ func TestOTC_GetMyOptionContracts_AfterAccept(t *testing.T) {
 	offerBody := map[string]any{
 		"asset_ownership_id":   ownership.AssetOwnershipID,
 		"amount":               10,
-		"price_per_stock":      50.0,
-		"premium":              5.0,
+		"price_per_stock_rsd":  50.0,
+		"premium_rsd":          5.0,
 		"settlement_date":      time.Now().Add(30 * 24 * time.Hour).Format(time.RFC3339),
 		"buyer_account_number": "buyer-acc", // resolves to clientID=10
 	}
@@ -410,8 +410,8 @@ func createAcceptedOtcContract(t *testing.T, router *gin.Engine, db *gorm.DB) ui
 	offerBody := map[string]any{
 		"asset_ownership_id":   ownership.AssetOwnershipID,
 		"amount":               10,
-		"price_per_stock":      50.0,
-		"premium":              5.0,
+		"price_per_stock_rsd":  50.0,
+		"premium_rsd":          5.0,
 		"settlement_date":      time.Now().Add(30 * 24 * time.Hour).Format(time.RFC3339),
 		"buyer_account_number": "buyer-acc",
 	}

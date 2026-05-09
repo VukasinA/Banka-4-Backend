@@ -318,8 +318,8 @@ func otcCreateOffer(t *testing.T, svc *OtcOfferService, amount int) *model.OtcOf
 	offer, err := svc.CreateOffer(ctx, dto.CreateOtcOfferRequest{
 		AssetOwnershipID:   assetOwnershipID,
 		Amount:             amount,
-		PricePerStock:      50.0,
-		Premium:            5.0,
+		PricePerStockRSD:   50.0,
+		PremiumRSD:         5.0,
 		SettlementDate:     otcFutureDate,
 		BuyerAccountNumber: "buyer-acc",
 	})
@@ -349,8 +349,8 @@ func TestOtcCreateOffer_SelfOffer_ReturnsError(t *testing.T) {
 	_, err := svc.CreateOffer(ctx, dto.CreateOtcOfferRequest{
 		AssetOwnershipID:   assetOwnershipID,
 		Amount:             10,
-		PricePerStock:      50,
-		Premium:            5,
+		PricePerStockRSD:   50,
+		PremiumRSD:         5,
 		SettlementDate:     otcFutureDate,
 		BuyerAccountNumber: "acc",
 	})
@@ -366,8 +366,8 @@ func TestOtcCreateOffer_PastSettlementDate_ReturnsError(t *testing.T) {
 	_, err := svc.CreateOffer(ctx, dto.CreateOtcOfferRequest{
 		AssetOwnershipID:   assetOwnershipID,
 		Amount:             10,
-		PricePerStock:      50,
-		Premium:            5,
+		PricePerStockRSD:   50,
+		PremiumRSD:         5,
 		SettlementDate:     time.Now().Add(-time.Hour),
 		BuyerAccountNumber: "acc",
 	})
@@ -383,8 +383,8 @@ func TestOtcCreateOffer_ExceedsSellerCapacity_ReturnsError(t *testing.T) {
 	_, err := svc.CreateOffer(ctx, dto.CreateOtcOfferRequest{
 		AssetOwnershipID:   assetOwnershipID,
 		Amount:             200, // seller only has 100 public
-		PricePerStock:      50,
-		Premium:            5,
+		PricePerStockRSD:   50,
+		PremiumRSD:         5,
 		SettlementDate:     otcFutureDate,
 		BuyerAccountNumber: "acc",
 	})
@@ -400,11 +400,11 @@ func TestOtcSendCounterOffer_Success(t *testing.T) {
 	sellerAcc := "seller-acc"
 	ctx := ctxForOtcUser(otcSellerID)
 	updated, err := svc.SendCounterOffer(ctx, offer.OtcOfferID, dto.CounterOfferRequest{
-		Amount:         8,
-		PricePerStock:  55,
-		Premium:        6,
-		SettlementDate: otcFutureDate,
-		AccountNumber:  &sellerAcc,
+		Amount:           8,
+		PricePerStockRSD: 55,
+		PremiumRSD:       6,
+		SettlementDate:   otcFutureDate,
+		AccountNumber:    &sellerAcc,
 	})
 
 	require.NoError(t, err)
@@ -420,10 +420,10 @@ func TestOtcSendCounterOffer_SameUserTwice_ReturnsError(t *testing.T) {
 	// buyer just created the offer (ModifiedBy=buyer) — buyer tries again
 	ctx := ctxForOtcUser(otcBuyerID)
 	_, err := svc.SendCounterOffer(ctx, offer.OtcOfferID, dto.CounterOfferRequest{
-		Amount:         5,
-		PricePerStock:  50,
-		Premium:        5,
-		SettlementDate: otcFutureDate,
+		Amount:           5,
+		PricePerStockRSD: 50,
+		PremiumRSD:       5,
+		SettlementDate:   otcFutureDate,
 	})
 
 	require.Error(t, err)
@@ -436,10 +436,10 @@ func TestOtcSendCounterOffer_NonParticipant_ReturnsError(t *testing.T) {
 
 	ctx := ctxForOtcUser(99)
 	_, err := svc.SendCounterOffer(ctx, offer.OtcOfferID, dto.CounterOfferRequest{
-		Amount:         5,
-		PricePerStock:  50,
-		Premium:        5,
-		SettlementDate: otcFutureDate,
+		Amount:           5,
+		PricePerStockRSD: 50,
+		PremiumRSD:       5,
+		SettlementDate:   otcFutureDate,
 	})
 
 	require.Error(t, err)
@@ -451,10 +451,10 @@ func TestOtcSendCounterOffer_OfferNotFound_ReturnsError(t *testing.T) {
 	ctx := ctxForOtcUser(otcSellerID)
 
 	_, err := svc.SendCounterOffer(ctx, 9999, dto.CounterOfferRequest{
-		Amount:         5,
-		PricePerStock:  50,
-		Premium:        5,
-		SettlementDate: otcFutureDate,
+		Amount:           5,
+		PricePerStockRSD: 50,
+		PremiumRSD:       5,
+		SettlementDate:   otcFutureDate,
 	})
 
 	require.Error(t, err)
@@ -474,7 +474,7 @@ func TestOtcAcceptOffer_Success_CreatesContractAndIncreasesReservedAmount(t *tes
 	require.NoError(t, err)
 	assert.Len(t, contractRepo.contracts, 1)
 	assert.Equal(t, 10, contract.Amount)
-	assert.Equal(t, float64(50), contract.StrikePrice)
+	assert.Equal(t, float64(50), contract.StrikePriceRSD)
 	sellerOwnership, findErr := ownershipRepo.FindByUserAndAsset(context.Background(), otcSellerID, model.OwnerTypeClient, otcAssetID)
 	require.NoError(t, findErr)
 	require.NotNil(t, sellerOwnership)
@@ -586,8 +586,8 @@ func TestOtcValidateSellerCapacity_MultipleConcurrentOffers(t *testing.T) {
 	_, err := svc.CreateOffer(ctx, dto.CreateOtcOfferRequest{
 		AssetOwnershipID:   assetOwnershipID,
 		Amount:             20,
-		PricePerStock:      50,
-		Premium:            5,
+		PricePerStockRSD:   50,
+		PremiumRSD:         5,
 		SettlementDate:     otcFutureDate,
 		BuyerAccountNumber: "acc",
 	})

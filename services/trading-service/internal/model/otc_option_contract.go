@@ -37,8 +37,8 @@ type OtcOptionContract struct {
 
 	// Parametri ugovora — fiksirani u trenutku prihvatanja.
 	Amount              int       `gorm:"not null"`
-	StrikePrice         float64   `gorm:"not null"` // = OtcOffer.PricePerStock
-	Premium             float64   `gorm:"not null"` // već isplaćeno
+	StrikePriceRSD      float64   `gorm:"column:strike_price;not null"` // = OtcOffer.PricePerStockRSD
+	PremiumRSD          float64   `gorm:"column:premium;not null"`      // već isplaćeno
 	SettlementDate      time.Time `gorm:"not null"`
 	BuyerAccountNumber  string    `gorm:"not null;size:64"`
 	SellerAccountNumber string    `gorm:"not null;size:64"`
