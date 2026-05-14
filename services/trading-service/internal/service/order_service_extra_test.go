@@ -8,13 +8,13 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/RAF-SI-2025/Banka-4-Backend/common/pkg/pb"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/dto"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/model"
 )
-
-// ── resolveDailyVolume Tests ──────────────────────────────────────
 
 func TestResolveDailyVolume_ReturnsVolume(t *testing.T) {
 	dailyInfo := &model.ListingDailyPriceInfo{Volume: 5000}
@@ -73,8 +73,6 @@ func TestResolveDailyVolume_RepoError_ReturnsZero(t *testing.T) {
 	vol := svc.resolveDailyVolume(context.Background(), 1)
 	require.Equal(t, uint(0), vol)
 }
-
-// ── nextExecutionAt Tests ─────────────────────────────────────────
 
 func TestNextExecutionAt_RemainingZero_ReturnsNow(t *testing.T) {
 	svc := newTestOrderService(&fakeOrderRepo{}, &fakeOrderTransactionRepo{}, &fakeExchangeRepo{}, &fakeListingRepo{},
@@ -138,8 +136,6 @@ func TestNextExecutionAt_ZeroVolume_StillReturnsValidTime(t *testing.T) {
 	require.True(t, !result.Before(svc.now()))
 }
 
-// ── resolveExecutionPrice additional paths ────────────────────────
-
 func TestResolveExecutionPrice_StopBuy(t *testing.T) {
 	listing := &model.Listing{Price: 150.0, Ask: 151.0}
 	p, ok := resolveExecutionPrice(&model.Order{OrderType: model.OrderTypeStop, Direction: model.OrderDirectionBuy}, listing)
@@ -183,8 +179,6 @@ func TestResolveExecutionPrice_UnknownType_ReturnsFalse(t *testing.T) {
 	require.False(t, ok)
 }
 
-// ── nextTradingOpen: weekend skipping ────────────────────────────
-
 func TestNextTradingOpen_WeekdayReturnsItself(t *testing.T) {
 	mon := time.Date(2025, 6, 9, 9, 0, 0, 0, time.UTC)
 	result := nextTradingOpen(mon)
@@ -202,8 +196,6 @@ func TestNextTradingOpen_SundaySkipsToMonday(t *testing.T) {
 	result := nextTradingOpen(sun)
 	require.Equal(t, time.Monday, result.Weekday())
 }
-
-// ── processOrder: stop condition not met -> reschedules ──────────
 
 func TestProcessOrder_StopNotMet_Reschedules(t *testing.T) {
 	listing := defaultListing()
@@ -232,8 +224,6 @@ func TestProcessOrder_StopNotMet_Reschedules(t *testing.T) {
 	require.NotNil(t, order.NextExecutionAt)
 	require.False(t, order.Triggered)
 }
-
-// ── processOrder: limit price not met -> reschedules ─────────────
 
 func TestProcessOrder_LimitNotMet_Reschedules(t *testing.T) {
 	listing := defaultListing()
@@ -267,8 +257,6 @@ func TestProcessOrder_LimitNotMet_Reschedules(t *testing.T) {
 	require.False(t, order.IsDone)
 	require.NotNil(t, order.NextExecutionAt)
 }
-
-// ── processOrder: settlement transient error -> retries ──────────
 
 func TestProcessOrder_SettlementTransientError_Reschedules(t *testing.T) {
 	listing := defaultListing()
@@ -307,8 +295,6 @@ func TestProcessOrder_SettlementTransientError_Reschedules(t *testing.T) {
 	require.False(t, order.IsDone)
 	require.NotNil(t, order.NextExecutionAt)
 }
-
-// ── processOrder: partial fill -> next execution scheduled ───────
 
 func TestProcessOrder_MarketOrder_PartialFill_SchedulesNext(t *testing.T) {
 	listing := defaultListing()
@@ -359,8 +345,6 @@ func TestProcessOrder_MarketOrder_PartialFill_SchedulesNext(t *testing.T) {
 	}
 }
 
-// ── calculateInitialPricePerUnit: StopLimit path ─────────────────
-
 func TestCalculateInitialPricePerUnit_StopLimit(t *testing.T) {
 	listing := &model.Listing{Price: 150.0, Ask: 151.0}
 	lv := 155.0
@@ -375,8 +359,6 @@ func TestCalculateInitialPricePerUnit_Unknown(t *testing.T) {
 	require.Nil(t, p)
 }
 
-// ── calculateCommission: StopLimit and Unknown paths ─────────────
-
 func TestCalculateCommission_StopLimit(t *testing.T) {
 	require.InDelta(t, 0.24*10, calculateCommission(model.OrderTypeStopLimit, 10), 0.001)
 	require.Equal(t, 12.0, calculateCommission(model.OrderTypeStopLimit, 100))
@@ -386,16 +368,12 @@ func TestCalculateCommission_UnknownType(t *testing.T) {
 	require.Equal(t, 0.0, calculateCommission("UNKNOWN", 1000))
 }
 
-// ── isStopConditionMet: default direction ────────────────────────
-
 func TestIsStopConditionMet_UnknownDirection(t *testing.T) {
 	listing := &model.Listing{Price: 150.0, Ask: 151.0}
 	sv := 150.0
 	order := &model.Order{Direction: "UNKNOWN", StopValue: &sv}
 	require.False(t, isStopConditionMet(order, listing))
 }
-
-// ── processOrder: fillQty 0 -> reschedules ───────────────────────
 
 func TestProcessOrder_FillQtyZero_Reschedules(t *testing.T) {
 	listing := defaultListing()
@@ -427,8 +405,6 @@ func TestProcessOrder_FillQtyZero_Reschedules(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, order.NextExecutionAt)
 }
-
-// ── processOrder: commission sell path ───────────────────────────
 
 func TestProcessOrder_MarketSell_WithCommission(t *testing.T) {
 	listing := defaultListing()
@@ -484,8 +460,6 @@ func TestProcessOrder_MarketSell_WithCommission(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// ── CreateOrder: expired asset paths ─────────────────────────────
-
 func TestCreateOrder_ExpiredFuture_ReturnsError(t *testing.T) {
 	listing := defaultListing()
 	listing.AssetID = 1
@@ -524,4 +498,320 @@ func TestCreateOrder_ExpiredOption_ReturnsError(t *testing.T) {
 	require.Error(t, err)
 	require.Nil(t, order)
 	require.Contains(t, err.Error(), "expired option")
+}
+
+func TestResolveContractSize_NilAsset_ReturnsOne(t *testing.T) {
+	listing := &model.Listing{ListingID: 1, Asset: nil}
+	svc := newTestOrderService(&fakeOrderRepo{}, &fakeOrderTransactionRepo{}, &fakeExchangeRepo{}, &fakeListingRepo{},
+		&fakeUserServiceClient{}, &fakeOrderBankingClient{}, &fakeTaxRecorder{})
+
+	result := svc.resolveContractSize(context.Background(), listing)
+	require.Equal(t, 1.0, result)
+}
+
+func TestResolveContractSize_StockType_ReturnsOne(t *testing.T) {
+	listing := &model.Listing{
+		ListingID: 1,
+		AssetID:   10,
+		Asset:     &model.Asset{AssetType: model.AssetTypeStock},
+	}
+	svc := newTestOrderService(&fakeOrderRepo{}, &fakeOrderTransactionRepo{}, &fakeExchangeRepo{}, &fakeListingRepo{},
+		&fakeUserServiceClient{}, &fakeOrderBankingClient{}, &fakeTaxRecorder{})
+
+	result := svc.resolveContractSize(context.Background(), listing)
+	require.Equal(t, 1.0, result)
+}
+
+func TestResolveContractSize_FutureType_ReturnsContractSize(t *testing.T) {
+	listing := &model.Listing{
+		ListingID: 1,
+		AssetID:   10,
+		Asset:     &model.Asset{AssetType: model.AssetTypeFuture},
+	}
+	svc := newTestOrderService(&fakeOrderRepo{}, &fakeOrderTransactionRepo{}, &fakeExchangeRepo{}, &fakeListingRepo{},
+		&fakeUserServiceClient{}, &fakeOrderBankingClient{}, &fakeTaxRecorder{})
+	svc.futuresRepo = &fakeFuturesRepo{futures: []model.FuturesContract{
+		{AssetID: 10, ContractSize: 250.0},
+	}}
+
+	result := svc.resolveContractSize(context.Background(), listing)
+	require.Equal(t, 250.0, result)
+}
+
+func TestResolveContractSize_FutureType_RepoError_FallbackOne(t *testing.T) {
+	listing := &model.Listing{
+		ListingID: 1,
+		AssetID:   10,
+		Asset:     &model.Asset{AssetType: model.AssetTypeFuture},
+	}
+	svc := newTestOrderService(&fakeOrderRepo{}, &fakeOrderTransactionRepo{}, &fakeExchangeRepo{}, &fakeListingRepo{},
+		&fakeUserServiceClient{}, &fakeOrderBankingClient{}, &fakeTaxRecorder{})
+	svc.futuresRepo = &fakeFuturesRepo{err: errors.New("db error")}
+
+	result := svc.resolveContractSize(context.Background(), listing)
+	require.Equal(t, 1.0, result)
+}
+
+func TestResolveContractSize_FutureType_EmptyContracts_FallbackOne(t *testing.T) {
+	listing := &model.Listing{
+		ListingID: 1,
+		AssetID:   10,
+		Asset:     &model.Asset{AssetType: model.AssetTypeFuture},
+	}
+	svc := newTestOrderService(&fakeOrderRepo{}, &fakeOrderTransactionRepo{}, &fakeExchangeRepo{}, &fakeListingRepo{},
+		&fakeUserServiceClient{}, &fakeOrderBankingClient{}, &fakeTaxRecorder{})
+	svc.futuresRepo = &fakeFuturesRepo{futures: []model.FuturesContract{}}
+
+	result := svc.resolveContractSize(context.Background(), listing)
+	require.Equal(t, 1.0, result)
+}
+
+func TestResolveContractSize_OptionType_ReturnsContractSize(t *testing.T) {
+	listing := &model.Listing{
+		ListingID: 1,
+		AssetID:   10,
+		Asset:     &model.Asset{AssetType: model.AssetTypeOption},
+	}
+	svc := newTestOrderService(&fakeOrderRepo{}, &fakeOrderTransactionRepo{}, &fakeExchangeRepo{}, &fakeListingRepo{},
+		&fakeUserServiceClient{}, &fakeOrderBankingClient{}, &fakeTaxRecorder{})
+	svc.optionRepo = &fakeOptionRepo{options: []model.Option{
+		{AssetID: 10, ContractSize: 50},
+	}}
+
+	result := svc.resolveContractSize(context.Background(), listing)
+	require.Equal(t, 50.0, result)
+}
+
+func TestResolveContractSize_OptionType_RepoError_FallbackHundred(t *testing.T) {
+	listing := &model.Listing{
+		ListingID: 1,
+		AssetID:   10,
+		Asset:     &model.Asset{AssetType: model.AssetTypeOption},
+	}
+	svc := newTestOrderService(&fakeOrderRepo{}, &fakeOrderTransactionRepo{}, &fakeExchangeRepo{}, &fakeListingRepo{},
+		&fakeUserServiceClient{}, &fakeOrderBankingClient{}, &fakeTaxRecorder{})
+	svc.optionRepo = &fakeOptionRepo{err: errors.New("db error")}
+
+	result := svc.resolveContractSize(context.Background(), listing)
+	require.Equal(t, 100.0, result)
+}
+
+func TestResolveContractSize_OptionType_EmptyOptions_FallbackHundred(t *testing.T) {
+	listing := &model.Listing{
+		ListingID: 1,
+		AssetID:   10,
+		Asset:     &model.Asset{AssetType: model.AssetTypeOption},
+	}
+	svc := newTestOrderService(&fakeOrderRepo{}, &fakeOrderTransactionRepo{}, &fakeExchangeRepo{}, &fakeListingRepo{},
+		&fakeUserServiceClient{}, &fakeOrderBankingClient{}, &fakeTaxRecorder{})
+	svc.optionRepo = &fakeOptionRepo{options: []model.Option{}}
+
+	result := svc.resolveContractSize(context.Background(), listing)
+	require.Equal(t, 100.0, result)
+}
+
+func TestResolveContractSize_ForexType_ReturnsThousand(t *testing.T) {
+	listing := &model.Listing{
+		ListingID: 1,
+		AssetID:   10,
+		Asset:     &model.Asset{AssetType: model.AssetTypeForexPair},
+	}
+	svc := newTestOrderService(&fakeOrderRepo{}, &fakeOrderTransactionRepo{}, &fakeExchangeRepo{}, &fakeListingRepo{},
+		&fakeUserServiceClient{}, &fakeOrderBankingClient{}, &fakeTaxRecorder{})
+
+	result := svc.resolveContractSize(context.Background(), listing)
+	require.Equal(t, 1000.0, result)
+}
+
+func TestCreateFundLiquidationOrder_NilFund_ReturnsError(t *testing.T) {
+	svc := newTestOrderService(&fakeOrderRepo{}, &fakeOrderTransactionRepo{}, &fakeExchangeRepo{}, &fakeListingRepo{},
+		&fakeUserServiceClient{}, &fakeOrderBankingClient{}, &fakeTaxRecorder{})
+
+	order, err := svc.CreateFundLiquidationOrder(context.Background(), nil, 1, 10)
+	require.Error(t, err)
+	require.Nil(t, order)
+	require.Contains(t, err.Error(), "investment fund not found")
+}
+
+func TestCreateFundLiquidationOrder_AccountNotFound_ReturnsError(t *testing.T) {
+	fund := &model.InvestmentFund{
+		FundID:        1,
+		ManagerID:     5,
+		AccountNumber: "fund-acc-1",
+	}
+	svc := newTestOrderService(&fakeOrderRepo{}, &fakeOrderTransactionRepo{}, &fakeExchangeRepo{}, &fakeListingRepo{},
+		&fakeUserServiceClient{}, &fakeOrderBankingClient{
+			accountErr: status.Error(codes.NotFound, "account not found"),
+		}, &fakeTaxRecorder{})
+
+	order, err := svc.CreateFundLiquidationOrder(context.Background(), fund, 1, 10)
+	require.Error(t, err)
+	require.Nil(t, order)
+	require.Contains(t, err.Error(), "account not found")
+}
+
+func TestCreateFundLiquidationOrder_ServiceUnavailable_ReturnsError(t *testing.T) {
+	fund := &model.InvestmentFund{
+		FundID:        1,
+		ManagerID:     5,
+		AccountNumber: "fund-acc-1",
+	}
+	svc := newTestOrderService(&fakeOrderRepo{}, &fakeOrderTransactionRepo{}, &fakeExchangeRepo{}, &fakeListingRepo{},
+		&fakeUserServiceClient{}, &fakeOrderBankingClient{
+			accountErr: errors.New("connection refused"),
+		}, &fakeTaxRecorder{})
+
+	order, err := svc.CreateFundLiquidationOrder(context.Background(), fund, 1, 10)
+	require.Error(t, err)
+	require.Nil(t, order)
+}
+
+func TestCreateFundLiquidationOrder_Success(t *testing.T) {
+	listing := defaultListing()
+	exchange := defaultExchange()
+	fund := &model.InvestmentFund{
+		FundID:        1,
+		ManagerID:     5,
+		AccountNumber: "fund-acc-1",
+	}
+	svc := newTestOrderService(&fakeOrderRepo{}, &fakeOrderTransactionRepo{}, &fakeExchangeRepo{exchange: exchange}, &fakeListingRepo{listing: listing},
+		&fakeUserServiceClient{
+			employeeResp: &pb.GetEmployeeByIdResponse{
+				Id:           5,
+				IsAgent:      true,
+				NeedApproval: false,
+				OrderLimit:   1000000,
+				UsedLimit:    0,
+				IsSupervisor: false,
+			},
+			identityResp: &pb.GetIdentityByUserIdResponse{IdentityId: 5},
+		}, &fakeOrderBankingClient{
+			accountResp: defaultFundAccountResp(5),
+		}, &fakeTaxRecorder{})
+	svc.assetOwnershipRepo = &fakeAssetOwnershipRepo{
+		ownerships: []model.AssetOwnership{
+			{AssetID: listing.AssetID, UserId: 1, OwnerType: model.OwnerTypeFund, Amount: 100},
+		},
+	}
+
+	order, err := svc.CreateFundLiquidationOrder(context.Background(), fund, 1, 10)
+	require.NoError(t, err)
+	require.NotNil(t, order)
+	require.Equal(t, model.OrderDirectionSell, order.Direction)
+	require.Equal(t, model.OrderTypeMarket, order.OrderType)
+	require.True(t, order.CommissionExempt)
+}
+
+func TestInitialMarginCost_NilListing_ReturnsError(t *testing.T) {
+	svc := newTestOrderService(&fakeOrderRepo{}, &fakeOrderTransactionRepo{}, &fakeExchangeRepo{}, &fakeListingRepo{},
+		&fakeUserServiceClient{}, &fakeOrderBankingClient{}, &fakeTaxRecorder{})
+
+	cost, err := svc.initialMarginCostInAccountCurrency(context.Background(), nil, defaultExchange(), defaultAccountResp(10))
+	require.Error(t, err)
+	require.Equal(t, 0.0, cost)
+	require.Contains(t, err.Error(), "listing not found")
+}
+
+func TestInitialMarginCost_NilExchange_ReturnsError(t *testing.T) {
+	svc := newTestOrderService(&fakeOrderRepo{}, &fakeOrderTransactionRepo{}, &fakeExchangeRepo{}, &fakeListingRepo{},
+		&fakeUserServiceClient{}, &fakeOrderBankingClient{}, &fakeTaxRecorder{})
+
+	cost, err := svc.initialMarginCostInAccountCurrency(context.Background(), defaultListing(), nil, defaultAccountResp(10))
+	require.Error(t, err)
+	require.Equal(t, 0.0, cost)
+	require.Contains(t, err.Error(), "exchange not found")
+}
+
+func TestInitialMarginCost_NilAccount_ReturnsError(t *testing.T) {
+	svc := newTestOrderService(&fakeOrderRepo{}, &fakeOrderTransactionRepo{}, &fakeExchangeRepo{}, &fakeListingRepo{},
+		&fakeUserServiceClient{}, &fakeOrderBankingClient{}, &fakeTaxRecorder{})
+
+	cost, err := svc.initialMarginCostInAccountCurrency(context.Background(), defaultListing(), defaultExchange(), nil)
+	require.Error(t, err)
+	require.Equal(t, 0.0, cost)
+	require.Contains(t, err.Error(), "account not found")
+}
+
+func TestInitialMarginCost_ZeroMargin_ReturnsZero(t *testing.T) {
+	listing := defaultListing()
+	listing.MaintenanceMargin = 0
+
+	svc := newTestOrderService(&fakeOrderRepo{}, &fakeOrderTransactionRepo{}, &fakeExchangeRepo{}, &fakeListingRepo{},
+		&fakeUserServiceClient{}, &fakeOrderBankingClient{}, &fakeTaxRecorder{})
+
+	cost, err := svc.initialMarginCostInAccountCurrency(context.Background(), listing, defaultExchange(), defaultAccountResp(10))
+	require.NoError(t, err)
+	require.Equal(t, 0.0, cost)
+}
+
+func TestInitialMarginCost_SameCurrency_ReturnsDirectly(t *testing.T) {
+	listing := defaultListing()
+	listing.MaintenanceMargin = 100.0
+	exchange := defaultExchange()
+	exchange.Currency = "USD"
+	account := defaultAccountResp(10)
+	account.CurrencyCode = "USD"
+
+	svc := newTestOrderService(&fakeOrderRepo{}, &fakeOrderTransactionRepo{}, &fakeExchangeRepo{}, &fakeListingRepo{},
+		&fakeUserServiceClient{}, &fakeOrderBankingClient{}, &fakeTaxRecorder{})
+
+	cost, err := svc.initialMarginCostInAccountCurrency(context.Background(), listing, exchange, account)
+	require.NoError(t, err)
+	require.InDelta(t, 110.0, cost, 0.001)
+}
+
+func TestInitialMarginCost_DifferentCurrency_Converts(t *testing.T) {
+	listing := defaultListing()
+	listing.MaintenanceMargin = 100.0
+	exchange := defaultExchange()
+	exchange.Currency = "USD"
+	account := defaultAccountResp(10)
+	account.CurrencyCode = "RSD"
+
+	svc := newTestOrderService(&fakeOrderRepo{}, &fakeOrderTransactionRepo{}, &fakeExchangeRepo{}, &fakeListingRepo{},
+		&fakeUserServiceClient{}, &fakeOrderBankingClient{}, &fakeTaxRecorder{})
+
+	cost, err := svc.initialMarginCostInAccountCurrency(context.Background(), listing, exchange, account)
+	require.NoError(t, err)
+	// fakeOrderBankingClient.ConvertCurrency returns amount as-is
+	require.InDelta(t, 110.0, cost, 0.001)
+}
+
+func TestAssetOwner_WithAssetOwnerUserID_ReturnsAssetOwner(t *testing.T) {
+	order := &model.Order{
+		AssetOwnerUserID: 42,
+		AssetOwnerType:   model.OwnerTypeFund,
+		OrderOwnerUserID: 10,
+		OrderOwnerType:   model.OwnerTypeActuary,
+	}
+
+	ownerID, ownerType := assetOwner(order)
+	require.Equal(t, uint(42), ownerID)
+	require.Equal(t, model.OwnerTypeFund, ownerType)
+}
+
+func TestAssetOwner_ZeroAssetOwnerUserID_FallsBackToOrderOwner(t *testing.T) {
+	order := &model.Order{
+		AssetOwnerUserID: 0,
+		AssetOwnerType:   model.OwnerTypeFund,
+		OrderOwnerUserID: 10,
+		OrderOwnerType:   model.OwnerTypeActuary,
+	}
+
+	ownerID, ownerType := assetOwner(order)
+	require.Equal(t, uint(10), ownerID)
+	require.Equal(t, model.OwnerTypeActuary, ownerType)
+}
+
+func TestAssetOwner_ClientOwner_ReturnsClientOwner(t *testing.T) {
+	order := &model.Order{
+		AssetOwnerUserID: 5,
+		AssetOwnerType:   model.OwnerTypeClient,
+		OrderOwnerUserID: 5,
+		OrderOwnerType:   model.OwnerTypeClient,
+	}
+
+	ownerID, ownerType := assetOwner(order)
+	require.Equal(t, uint(5), ownerID)
+	require.Equal(t, model.OwnerTypeClient, ownerType)
 }

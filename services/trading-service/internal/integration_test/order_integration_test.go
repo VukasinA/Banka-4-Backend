@@ -12,6 +12,36 @@ import (
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/model"
 )
 
+func TestGetOrders_Success(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router, _ := setupTestRouter(t, db)
+
+	ex := seedExchange(t, db, "XNYS")
+	listing := seedListing(t, db, "AAPL", ex.MicCode, model.AssetTypeStock, 150.0)
+	seedStock(t, db, listing.ListingID)
+	seedOrder(t, db, 10, listing.ListingID, model.OrderDirectionBuy, model.OrderStatusPending)
+
+	auth := authHeaderForSupervisor(t)
+
+	rec := performRequest(t, router, http.MethodGet, "/api/orders?page=1&page_size=10", nil, auth)
+	requireStatus(t, rec, http.StatusOK)
+
+	resp := decodeResponse[map[string]any](t, rec)
+	require.NotNil(t, resp["data"])
+}
+
+func TestGetOrders_DefaultPagination(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router, _ := setupTestRouter(t, db)
+
+	auth := authHeaderForSupervisor(t)
+
+	rec := performRequest(t, router, http.MethodGet, "/api/orders", nil, auth)
+	requireStatus(t, rec, http.StatusOK)
+}
+
 func TestCreateOrder(t *testing.T) {
 	t.Parallel()
 	db := setupTestDB(t)
@@ -203,8 +233,6 @@ func TestCancelOrder_AlreadyDeclined(t *testing.T) {
 	require.NotEqual(t, http.StatusOK, rec.Code)
 }
 
-// ── POST /api/orders/invest ───────────────────────────────────────
-
 func TestCreateFundOrder_BuyMarket_Success(t *testing.T) {
 	t.Parallel()
 	db := setupTestDB(t)
@@ -348,4 +376,24 @@ func TestCreateFundOrder_LimitOrder_MissingLimitValue(t *testing.T) {
 
 	rec := performRequest(t, router, http.MethodPost, "/api/orders/invest", body, authHeaderForSupervisor(t))
 	requireStatus(t, rec, http.StatusBadRequest)
+}
+
+func TestGetOrders_ForbiddenForClient(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router, _ := setupTestRouter(t, db)
+
+	auth := authHeaderForClient(t, 50, 1)
+
+	rec := performRequest(t, router, http.MethodGet, "/api/orders", nil, auth)
+	require.NotEqual(t, http.StatusOK, rec.Code)
+}
+
+func TestGetOrders_Unauthorized(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router, _ := setupTestRouter(t, db)
+
+	rec := performRequest(t, router, http.MethodGet, "/api/orders", nil, "")
+	require.NotEqual(t, http.StatusOK, rec.Code)
 }

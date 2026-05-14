@@ -299,3 +299,12 @@ func TestResetUsedLimitErrors(t *testing.T) {
 		})
 	}
 }
+
+func TestListActuaries_Unauthorized(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router := setupTestRouter(t, db)
+
+	rec := performRequest(t, router, http.MethodGet, "/api/actuaries", nil, "")
+	requireStatus(t, rec, http.StatusUnauthorized)
+}

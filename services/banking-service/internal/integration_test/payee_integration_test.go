@@ -237,3 +237,25 @@ func TestDeletePayee(t *testing.T) {
 	recorder = performRequest(t, router, http.MethodDelete, deletePath, nil, clientAuth)
 	requireStatus(t, recorder, http.StatusNotFound)
 }
+
+func TestUpdatePayee_InvalidID(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router := setupTestRouter(t, db)
+
+	clientAuth := authHeaderForClient(t, 10, 100)
+
+	rec := performRequest(t, router, http.MethodPatch, "/api/payees/abc", map[string]any{"name": "test"}, clientAuth)
+	requireStatus(t, rec, http.StatusBadRequest)
+}
+
+func TestDeletePayee_InvalidID(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router := setupTestRouter(t, db)
+
+	clientAuth := authHeaderForClient(t, 10, 100)
+
+	rec := performRequest(t, router, http.MethodDelete, "/api/payees/abc", nil, clientAuth)
+	requireStatus(t, rec, http.StatusBadRequest)
+}

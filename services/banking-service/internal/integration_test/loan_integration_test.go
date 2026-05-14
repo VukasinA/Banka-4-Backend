@@ -447,3 +447,76 @@ func TestListLoanRequests(t *testing.T) {
 	recorder = performRequest(t, router, http.MethodGet, "/api/loan-requests", nil, "")
 	requireStatus(t, recorder, http.StatusUnauthorized)
 }
+
+func TestGetLoans_InvalidClientID(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router := setupTestRouter(t, db)
+
+	employeeAuth := authHeaderForEmployee(t, 1, 1)
+
+	rec := performRequest(t, router, http.MethodGet, "/api/clients/abc/loans", nil, employeeAuth)
+	requireStatus(t, rec, http.StatusBadRequest)
+}
+
+func TestGetLoanByID_InvalidClientID(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router := setupTestRouter(t, db)
+
+	employeeAuth := authHeaderForEmployee(t, 1, 1)
+
+	rec := performRequest(t, router, http.MethodGet, "/api/clients/abc/loans/1", nil, employeeAuth)
+	requireStatus(t, rec, http.StatusBadRequest)
+}
+
+func TestGetLoanByID_InvalidLoanID(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router := setupTestRouter(t, db)
+
+	employeeAuth := authHeaderForEmployee(t, 1, 1)
+
+	rec := performRequest(t, router, http.MethodGet, "/api/clients/100/loans/abc", nil, employeeAuth)
+	requireStatus(t, rec, http.StatusBadRequest)
+}
+
+func TestApproveLoanRequest_InvalidID(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router := setupTestRouter(t, db)
+
+	employeeAuth := authHeaderForEmployee(t, 1, 1)
+
+	rec := performRequest(t, router, http.MethodPatch, "/api/loan-requests/abc/approve", nil, employeeAuth)
+	requireStatus(t, rec, http.StatusBadRequest)
+}
+
+func TestRejectLoanRequest_InvalidID(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router := setupTestRouter(t, db)
+
+	employeeAuth := authHeaderForEmployee(t, 1, 1)
+
+	rec := performRequest(t, router, http.MethodPatch, "/api/loan-requests/abc/reject", nil, employeeAuth)
+	requireStatus(t, rec, http.StatusBadRequest)
+}
+
+func TestGetLoans_Unauthorized(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router := setupTestRouter(t, db)
+
+	rec := performRequest(t, router, http.MethodGet, "/api/clients/100/loans", nil, "")
+	requireStatus(t, rec, http.StatusUnauthorized)
+}
+
+func TestGetLoanByID_Unauthorized(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router := setupTestRouter(t, db)
+
+	rec := performRequest(t, router, http.MethodGet, "/api/clients/100/loans/1", nil, "")
+	requireStatus(t, rec, http.StatusUnauthorized)
+}

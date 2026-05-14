@@ -297,3 +297,56 @@ func TestDeactivateRequiresEmployee(t *testing.T) {
 	recorder := performRequest(t, router, http.MethodPut, deactivatePath, nil, clientAuth)
 	requireStatus(t, recorder, http.StatusForbidden)
 }
+
+func TestConfirmCardRequest_Unauthorized(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router := setupTestRouter(t, db)
+
+	rec := performRequest(t, router, http.MethodPost, "/api/cards/request/confirm", map[string]any{
+		"code": "123456",
+	}, "")
+	requireStatus(t, rec, http.StatusUnauthorized)
+}
+
+func TestBlockCard_InvalidID(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router := setupTestRouter(t, db)
+
+	employeeAuth := authHeaderForEmployee(t, 1, 1)
+
+	rec := performRequest(t, router, http.MethodPut, "/api/cards/abc/block", nil, employeeAuth)
+	requireStatus(t, rec, http.StatusBadRequest)
+}
+
+func TestUnblockCard_InvalidID(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router := setupTestRouter(t, db)
+
+	employeeAuth := authHeaderForEmployee(t, 1, 1)
+
+	rec := performRequest(t, router, http.MethodPut, "/api/cards/abc/unblock", nil, employeeAuth)
+	requireStatus(t, rec, http.StatusBadRequest)
+}
+
+func TestDeactivateCard_InvalidID(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router := setupTestRouter(t, db)
+
+	employeeAuth := authHeaderForEmployee(t, 1, 1)
+
+	rec := performRequest(t, router, http.MethodPut, "/api/cards/abc/deactivate", nil, employeeAuth)
+	requireStatus(t, rec, http.StatusBadRequest)
+}
+
+func TestListCardsByAccount_Unauthorized(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router := setupTestRouter(t, db)
+
+	rec := performRequest(t, router, http.MethodGet, "/api/clients/100/accounts/444000100000000001/cards", nil, "")
+	requireStatus(t, rec, http.StatusUnauthorized)
+}

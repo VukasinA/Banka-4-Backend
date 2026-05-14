@@ -12,8 +12,6 @@ import (
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/banking-service/internal/model"
 )
 
-// ── Fake Payee Repo ────────────────────────────────────────────────
-
 type fakePayeeRepo struct {
 	payees    map[uint]*model.Payee
 	createErr error
@@ -78,16 +76,12 @@ func (f *fakePayeeRepo) Delete(ctx context.Context, id uint) error {
 	return nil
 }
 
-// ── Helper ─────────────────────────────────────────────────────────
-
 func ctxWithClient(clientID uint) context.Context {
 	id := clientID
 	return auth.SetAuthOnContext(context.Background(), &auth.AuthContext{
 		ClientID: &id,
 	})
 }
-
-// ── GetAll Tests ───────────────────────────────────────────────────
 
 func TestGetAll_Success(t *testing.T) {
 	repo := newFakePayeeRepo(
@@ -110,8 +104,6 @@ func TestGetAll_Unauthorized(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "not authenticated as client")
 }
-
-// ── Create Tests ───────────────────────────────────────────────────
 
 func TestCreate_Success(t *testing.T) {
 	svc := NewPayeeService(newFakePayeeRepo())
@@ -149,8 +141,6 @@ func TestCreate_RepoError(t *testing.T) {
 	require.Nil(t, payee)
 	require.Error(t, err)
 }
-
-// ── Update Tests ───────────────────────────────────────────────────
 
 func TestUpdate_Success(t *testing.T) {
 	repo := newFakePayeeRepo(
@@ -193,8 +183,6 @@ func TestUpdate_Unauthorized(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "not authenticated as client")
 }
-
-// ── Delete Tests ───────────────────────────────────────────────────
 
 func TestDelete_Success(t *testing.T) {
 	repo := newFakePayeeRepo(

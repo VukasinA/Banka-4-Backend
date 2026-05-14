@@ -310,3 +310,98 @@ func TestGetReceipt(t *testing.T) {
 	assert.Equal(t, "application/pdf", recorder.Header().Get("Content-Type"))
 	assert.Contains(t, recorder.Header().Get("Content-Disposition"), "receipt")
 }
+
+func TestGetPaymentByID_InvalidID(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router := setupTestRouter(t, db)
+
+	clientAuth := authHeaderForClient(t, 10, 100)
+
+	rec := performRequest(t, router, http.MethodGet, "/api/clients/100/payments/abc", nil, clientAuth)
+	requireStatus(t, rec, http.StatusBadRequest)
+}
+
+func TestGetReceipt_InvalidID(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router := setupTestRouter(t, db)
+
+	clientAuth := authHeaderForClient(t, 10, 100)
+
+	rec := performRequest(t, router, http.MethodGet, "/api/clients/100/payments/abc/receipt", nil, clientAuth)
+	requireStatus(t, rec, http.StatusBadRequest)
+}
+
+func TestVerifyPayment_InvalidID(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router := setupTestRouter(t, db)
+
+	clientAuth := authHeaderForClient(t, 10, 100)
+
+	rec := performRequest(t, router, http.MethodPost, "/api/clients/100/payments/abc/verify", map[string]any{
+		"code": "123456",
+	}, clientAuth)
+	requireStatus(t, rec, http.StatusBadRequest)
+}
+
+func TestGetAccountPayments_InvalidClientID(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router := setupTestRouter(t, db)
+
+	employeeAuth := authHeaderForEmployee(t, 1, 1)
+
+	rec := performRequest(t, router, http.MethodGet, "/api/clients/abc/accounts/444000100000000001/payments", nil, employeeAuth)
+	requireStatus(t, rec, http.StatusBadRequest)
+}
+
+func TestGetClientPayments_InvalidClientID(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router := setupTestRouter(t, db)
+
+	employeeAuth := authHeaderForEmployee(t, 1, 1)
+
+	rec := performRequest(t, router, http.MethodGet, "/api/clients/abc/payments", nil, employeeAuth)
+	requireStatus(t, rec, http.StatusBadRequest)
+}
+
+func TestVerifyPayment_Unauthorized(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router := setupTestRouter(t, db)
+
+	rec := performRequest(t, router, http.MethodPost, "/api/clients/100/payments/1/verify", map[string]any{
+		"code": "123456",
+	}, "")
+	requireStatus(t, rec, http.StatusUnauthorized)
+}
+
+func TestGetClientPayments_Unauthorized(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router := setupTestRouter(t, db)
+
+	rec := performRequest(t, router, http.MethodGet, "/api/clients/100/payments", nil, "")
+	requireStatus(t, rec, http.StatusUnauthorized)
+}
+
+func TestGetReceipt_Unauthorized(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router := setupTestRouter(t, db)
+
+	rec := performRequest(t, router, http.MethodGet, "/api/clients/100/payments/1/receipt", nil, "")
+	requireStatus(t, rec, http.StatusUnauthorized)
+}
+
+func TestGetAccountPayments_Unauthorized(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router := setupTestRouter(t, db)
+
+	rec := performRequest(t, router, http.MethodGet, "/api/clients/100/accounts/444000100000000001/payments", nil, "")
+	requireStatus(t, rec, http.StatusUnauthorized)
+}

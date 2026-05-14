@@ -396,3 +396,44 @@ func TestRequestAndConfirmLimitsChange(t *testing.T) {
 	assert.Equal(t, 500000.0, updated.DailyLimit)
 	assert.Equal(t, 2000000.0, updated.MonthlyLimit)
 }
+
+func TestListAccounts_Unauthorized(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router := setupTestRouter(t, db)
+
+	rec := performRequest(t, router, http.MethodGet, "/api/accounts", nil, "")
+	require.NotEqual(t, http.StatusOK, rec.Code)
+}
+
+func TestListAccounts_ForbiddenForClient(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router := setupTestRouter(t, db)
+
+	clientAuth := authHeaderForClient(t, 10, 100)
+	rec := performRequest(t, router, http.MethodGet, "/api/accounts", nil, clientAuth)
+	require.NotEqual(t, http.StatusOK, rec.Code)
+}
+
+func TestRequestLimitsChange_Unauthorized(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router := setupTestRouter(t, db)
+
+	rec := performRequest(t, router, http.MethodPost, "/api/clients/100/accounts/123/limits/request", map[string]any{
+		"new_daily_limit": 500000.0,
+	}, "")
+	require.NotEqual(t, http.StatusOK, rec.Code)
+}
+
+func TestConfirmLimitsChange_Unauthorized(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router := setupTestRouter(t, db)
+
+	rec := performRequest(t, router, http.MethodPut, "/api/clients/100/accounts/123/limits", map[string]any{
+		"code": "123456",
+	}, "")
+	require.NotEqual(t, http.StatusOK, rec.Code)
+}

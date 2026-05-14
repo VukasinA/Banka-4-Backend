@@ -207,6 +207,72 @@ func TestGetOptionDetails(t *testing.T) {
 	requireStatus(t, rec, http.StatusOK)
 }
 
+func TestGetFutureDetails_InvalidID(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router, _ := setupTestRouter(t, db)
+
+	auth := authHeaderForSupervisor(t)
+
+	rec := performRequest(t, router, http.MethodGet, "/api/listings/futures/abc", nil, auth)
+	require.NotEqual(t, http.StatusOK, rec.Code)
+}
+
+func TestGetFutureDetails_NotFound(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router, _ := setupTestRouter(t, db)
+
+	auth := authHeaderForSupervisor(t)
+
+	rec := performRequest(t, router, http.MethodGet, "/api/listings/futures/99999", nil, auth)
+	require.NotEqual(t, http.StatusOK, rec.Code)
+}
+
+func TestGetForexDetails_InvalidID(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router, _ := setupTestRouter(t, db)
+
+	auth := authHeaderForSupervisor(t)
+
+	rec := performRequest(t, router, http.MethodGet, "/api/listings/forex/abc", nil, auth)
+	require.NotEqual(t, http.StatusOK, rec.Code)
+}
+
+func TestGetForexDetails_NotFound(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router, _ := setupTestRouter(t, db)
+
+	auth := authHeaderForSupervisor(t)
+
+	rec := performRequest(t, router, http.MethodGet, "/api/listings/forex/99999", nil, auth)
+	require.NotEqual(t, http.StatusOK, rec.Code)
+}
+
+func TestGetOptionDetails_InvalidID(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router, _ := setupTestRouter(t, db)
+
+	auth := authHeaderForSupervisor(t)
+
+	rec := performRequest(t, router, http.MethodGet, "/api/listings/options/abc", nil, auth)
+	require.NotEqual(t, http.StatusOK, rec.Code)
+}
+
+func TestGetOptionDetails_NotFound(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router, _ := setupTestRouter(t, db)
+
+	auth := authHeaderForSupervisor(t)
+
+	rec := performRequest(t, router, http.MethodGet, "/api/listings/options/99999", nil, auth)
+	require.NotEqual(t, http.StatusOK, rec.Code)
+}
+
 func TestGetForex_Unauthorized(t *testing.T) {
 	t.Parallel()
 	db := setupTestDB(t)

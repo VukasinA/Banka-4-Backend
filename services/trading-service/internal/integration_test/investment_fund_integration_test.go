@@ -11,6 +11,30 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestGetBankFundPositions_Empty(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router, _ := setupTestRouter(t, db)
+
+	auth := authHeaderForSupervisor(t)
+
+	rec := performRequest(t, router, http.MethodGet, "/api/profit/funds", nil, auth)
+	requireStatus(t, rec, http.StatusOK)
+}
+
+func TestGetBankFundPositions_WithFund(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router, _ := setupTestRouter(t, db)
+
+	seedInvestmentFund(t, db, uniqueValue(t, "BankFund"), 10)
+
+	auth := authHeaderForSupervisor(t)
+
+	rec := performRequest(t, router, http.MethodGet, "/api/profit/funds", nil, auth)
+	requireStatus(t, rec, http.StatusOK)
+}
+
 func TestCreateFund_Success(t *testing.T) {
 	t.Parallel()
 	db := setupTestDB(t)
@@ -308,8 +332,6 @@ func TestGetFundDetail_HoldingsFormat(t *testing.T) {
 	}
 }
 
-// ── GET /api/funds tests ──────────────────────────────────────────
-
 func TestGetAllFunds_Success(t *testing.T) {
 	t.Parallel()
 	db := setupTestDB(t)
@@ -431,8 +453,6 @@ func TestGetAllFunds_FundValueAndProfitPresent(t *testing.T) {
 	require.True(t, hasMinContrib)
 }
 
-// ── GET /api/actuary/:actId/assets/funds tests ────────────────────
-
 func TestGetActuaryFunds_Success(t *testing.T) {
 	t.Parallel()
 	db := setupTestDB(t)
@@ -485,6 +505,52 @@ func TestGetActuaryFunds_OnlyReturnsManagedFunds(t *testing.T) {
 		// All returned funds should belong to manager 20
 		require.Contains(t, f["name"].(string), "Manager20Fund")
 	}
+}
+
+func TestGetActuaryFunds_InvalidID(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router, _ := setupTestRouter(t, db)
+
+	auth := authHeaderForSupervisor(t)
+	rec := performRequest(t, router, http.MethodGet, "/api/actuary/abc/assets/funds", nil, auth)
+	requireStatus(t, rec, http.StatusBadRequest)
+}
+
+func TestGetFundDetail_InvalidID(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router, _ := setupTestRouter(t, db)
+
+	auth := authHeaderForClient(t, 10, 100)
+	rec := performRequest(t, router, http.MethodGet, "/api/investment-funds/abc", nil, auth)
+	require.NotEqual(t, http.StatusOK, rec.Code)
+}
+
+func TestInvestInFund_InvalidFundID(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router, _ := setupTestRouter(t, db)
+
+	auth := authHeaderForClient(t, 1, 1)
+	rec := performRequest(t, router, http.MethodPost, "/api/investment-funds/abc/invest", map[string]any{
+		"amount":         1000.0,
+		"account_number": "444000100000000001",
+	}, auth)
+	requireStatus(t, rec, http.StatusBadRequest)
+}
+
+func TestWithdrawFromFund_InvalidFundID(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router, _ := setupTestRouter(t, db)
+
+	auth := authHeaderForClient(t, 1, 1)
+	rec := performRequest(t, router, http.MethodPost, "/api/investment-funds/abc/withdraw", map[string]any{
+		"amount":         500.0,
+		"account_number": "444000100000000001",
+	}, auth)
+	requireStatus(t, rec, http.StatusBadRequest)
 }
 
 func TestGetActuaryFunds_ForbiddenForClient(t *testing.T) {

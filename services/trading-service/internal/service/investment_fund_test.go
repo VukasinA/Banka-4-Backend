@@ -7,6 +7,11 @@ import (
 	"testing"
 	"time"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
+	commonErrors "github.com/RAF-SI-2025/Banka-4-Backend/common/pkg/errors"
+
 	"github.com/RAF-SI-2025/Banka-4-Backend/common/pkg/auth"
 	"github.com/RAF-SI-2025/Banka-4-Backend/common/pkg/pb"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/dto"
@@ -14,7 +19,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// ── Fake Fund Repo (extended for GetFundDetail) ───────────────────────────────
 type fakeFundRepo struct {
 	findByIDResult   *model.InvestmentFund
 	findByIDErr      error
@@ -90,8 +94,6 @@ func (f *fakeFundRepo) SavePerformanceSnapshot(ctx context.Context, perf *model.
 func (f *fakeFundRepo) UpdateManagerID(ctx context.Context, fromManagerID uint, toManagerID uint) (int64, error) {
 	return f.updateManagerIDResult, f.updateManagerIDErr
 }
-
-// ── Fake Position / Investment Repos (unchanged) ─────────────────────────────
 
 type fakePositionRepo struct {
 	findResult      *model.ClientFundPosition
@@ -171,8 +173,6 @@ func (f *fakeRedemptionRepo) FindPending(ctx context.Context, limit int) ([]mode
 func (f *fakeRedemptionRepo) SumPendingByClientAndFund(ctx context.Context, clientID uint, ownerType model.OwnerType, fundID uint) (float64, error) {
 	return f.pendingSum, f.pendingErr
 }
-
-// ── Fake Fund Banking Client ──────────────────────────────────────
 
 type fakeFundBankingClient struct {
 	createdAccountNumber string
@@ -308,8 +308,6 @@ func (f *fakeFundUserClient) IncrementUsedLimit(ctx context.Context, employeeID 
 	return f.incrementUsedLimitResp, f.incrementUsedLimitErr
 }
 
-// ── Helpers ───────────────────────────────────────────────────────
-
 func fundSupervisorCtx() context.Context {
 	employeeID := uint(25)
 	return auth.SetAuthOnContext(context.Background(), &auth.AuthContext{
@@ -350,8 +348,6 @@ func (f *fakeUserClient) IncrementUsedLimit(ctx context.Context, employeeID uint
 	return nil, nil
 }
 
-// ── Helper for creating service with listingRepo ───────────────────────────
-
 func newTestFundServiceWithListing(fundRepo *fakeFundRepo, listingRepo *fakeListingRepo, bankingClient *fakeFundBankingClient, userClient *fakeUserClient) *InvestmentFundService {
 	exchange := defaultExchange()
 	svc := NewInvestmentFundService(fundRepo, &fakePositionRepo{}, listingRepo, &fakeInvestmentRepo{}, &fakeRedemptionRepo{}, &fakeAssetOwnershipRepo{}, &fakeExchangeRepo{exchange: exchange}, &fakeStockRepo{},
@@ -361,8 +357,6 @@ func newTestFundServiceWithListing(fundRepo *fakeFundRepo, listingRepo *fakeList
 	svc.listingRepo = listingRepo // inject listingRepo
 	return svc
 }
-
-// ── Tests: GetFundDetail ───────────────────────────────────────────────────
 
 func TestGetFundDetail_Success(t *testing.T) {
 	fund := &model.InvestmentFund{
@@ -453,8 +447,6 @@ func newTestFundService(fundRepo *fakeFundRepo, ownershipRepo *fakeAssetOwnershi
 		nil,
 	)
 }
-
-// ── CreateFund tests ──────────────────────────────────────────────
 
 func TestCreateFund_Success(t *testing.T) {
 	fundRepo := &fakeFundRepo{}
@@ -552,8 +544,6 @@ func TestGetFundDetail_EmptyHoldings(t *testing.T) {
 	require.NotEmpty(t, resp.PerformanceHistory)
 }
 
-// ── GetAllFunds tests ─────────────────────────────────────────────
-
 func TestGetAllFunds_Success(t *testing.T) {
 	fund := model.InvestmentFund{
 		FundID:              1,
@@ -624,8 +614,6 @@ func TestGetAllFunds_OwnershipRepoError(t *testing.T) {
 
 	require.Error(t, err)
 }
-
-// ── GetActuaryFunds tests ─────────────────────────────────────────
 
 func TestGetActuaryFunds_Success(t *testing.T) {
 	fund := model.InvestmentFund{
@@ -983,7 +971,6 @@ func TestCalculateAndSaveDailyHistory_RepositoryError(t *testing.T) {
 	require.Equal(t, "database connection failed", err.Error())
 }
 
-// ── Custom Banking Client for advanced tests ─────────────────────────────
 type testCustomBankingClient struct {
 	fakeFundBankingClient
 	getAccountByNumberFunc func(ctx context.Context, accountNumber string) (*pb.GetAccountByNumberResponse, error)
@@ -1015,4 +1002,849 @@ func (c *testCustomBankingClient) GetAccountCurrency(_ context.Context, _ string
 }
 func (c *testCustomBankingClient) CreateFundAccount(_ context.Context, _ string, _ uint64) (string, error) {
 	return "", nil
+}
+
+func TestMapFundPaymentError_NotFound(t *testing.T) {
+	err := status.Error(codes.NotFound, "account not found")
+	mapped := mapFundPaymentError(err)
+	require.Error(t, mapped)
+	require.Contains(t, mapped.Error(), "account not found")
+}
+
+func TestMapFundPaymentError_FailedPrecondition(t *testing.T) {
+	err := status.Error(codes.FailedPrecondition, "insufficient funds")
+	mapped := mapFundPaymentError(err)
+	require.Error(t, mapped)
+	require.Contains(t, mapped.Error(), "insufficient funds")
+}
+
+func TestMapFundPaymentError_Unknown(t *testing.T) {
+	err := errors.New("something went wrong")
+	mapped := mapFundPaymentError(err)
+	require.Error(t, mapped)
+	// ServiceUnavailableErr wraps the original error; the Code is 503
+	var appErr *commonErrors.AppError
+	require.True(t, errors.As(mapped, &appErr))
+	require.Equal(t, 503, appErr.Code)
+}
+
+func TestProcessPendingRedemptions_Empty(t *testing.T) {
+	redemptionRepo := &fakeRedemptionRepo{pending: []model.ClientFundRedemption{}}
+	exchange := defaultExchange()
+	svc := NewInvestmentFundService(
+		&fakeFundRepo{}, &fakePositionRepo{}, &fakeListingRepo{},
+		&fakeInvestmentRepo{}, redemptionRepo, &fakeAssetOwnershipRepo{},
+		&fakeExchangeRepo{exchange: exchange}, &fakeStockRepo{},
+		&fakeOptionRepo{}, &fakeFuturesRepo{}, &fakeForexRepo{},
+		&fakeFundBankingClient{}, &fakeFundUserClient{}, nil,
+	)
+
+	err := svc.ProcessPendingRedemptions(context.Background())
+	require.NoError(t, err)
+}
+
+func TestProcessPendingRedemptions_RepoError(t *testing.T) {
+	redemptionRepo := &fakeRedemptionRepo{findErr: errors.New("db down")}
+	exchange := defaultExchange()
+	svc := NewInvestmentFundService(
+		&fakeFundRepo{}, &fakePositionRepo{}, &fakeListingRepo{},
+		&fakeInvestmentRepo{}, redemptionRepo, &fakeAssetOwnershipRepo{},
+		&fakeExchangeRepo{exchange: exchange}, &fakeStockRepo{},
+		&fakeOptionRepo{}, &fakeFuturesRepo{}, &fakeForexRepo{},
+		&fakeFundBankingClient{}, &fakeFundUserClient{}, nil,
+	)
+
+	err := svc.ProcessPendingRedemptions(context.Background())
+	require.Error(t, err)
+}
+
+func TestProcessPendingRedemptions_OneSuccess(t *testing.T) {
+	fund := &model.InvestmentFund{
+		FundID:        1,
+		Name:          "Test Fund",
+		AccountNumber: "fund-acc",
+	}
+	redemptionRepo := &fakeRedemptionRepo{
+		pending: []model.ClientFundRedemption{
+			{
+				ClientFundRedemptionID: 10,
+				ClientID:               99,
+				OwnerType:              model.OwnerTypeClient,
+				FundID:                 1,
+				Fund:                   *fund,
+				AccountNumber:          "client-acc",
+				Amount:                 500,
+				Status:                 model.FundRedemptionPendingLiquidation,
+			},
+		},
+	}
+	positionRepo := &fakePositionRepo{
+		findResult: &model.ClientFundPosition{
+			ClientID:            99,
+			OwnerType:           model.OwnerTypeClient,
+			FundID:              1,
+			TotalInvestedAmount: 2000,
+		},
+	}
+	bankingClient := &fakeFundBankingClient{
+		accountsByNumber: map[string]*pb.GetAccountByNumberResponse{
+			"fund-acc":   {AccountNumber: "fund-acc", AvailableBalance: 5000, CurrencyCode: "RSD"},
+			"client-acc": {AccountNumber: "client-acc", ClientId: 99, CurrencyCode: "RSD"},
+		},
+	}
+
+	exchange := defaultExchange()
+	svc := NewInvestmentFundService(
+		&fakeFundRepo{findByIDResult: fund}, positionRepo, &fakeListingRepo{},
+		&fakeInvestmentRepo{}, redemptionRepo, &fakeAssetOwnershipRepo{},
+		&fakeExchangeRepo{exchange: exchange}, &fakeStockRepo{},
+		&fakeOptionRepo{}, &fakeFuturesRepo{}, &fakeForexRepo{},
+		bankingClient, &fakeFundUserClient{}, nil,
+	)
+
+	err := svc.ProcessPendingRedemptions(context.Background())
+	require.NoError(t, err)
+	require.Len(t, bankingClient.payments, 1)
+}
+
+func TestProcessPendingRedemption_Success(t *testing.T) {
+	fund := &model.InvestmentFund{
+		FundID:        1,
+		Name:          "Test Fund",
+		AccountNumber: "fund-acc",
+	}
+	redemption := &model.ClientFundRedemption{
+		ClientFundRedemptionID: 10,
+		ClientID:               99,
+		OwnerType:              model.OwnerTypeClient,
+		FundID:                 1,
+		Fund:                   *fund,
+		AccountNumber:          "client-acc",
+		Amount:                 500,
+		Status:                 model.FundRedemptionPendingLiquidation,
+	}
+	positionRepo := &fakePositionRepo{
+		findResult: &model.ClientFundPosition{
+			ClientID:            99,
+			OwnerType:           model.OwnerTypeClient,
+			FundID:              1,
+			TotalInvestedAmount: 2000,
+		},
+	}
+	redemptionRepo := &fakeRedemptionRepo{}
+	bankingClient := &fakeFundBankingClient{
+		accountsByNumber: map[string]*pb.GetAccountByNumberResponse{
+			"fund-acc":   {AccountNumber: "fund-acc", AvailableBalance: 5000, CurrencyCode: "RSD"},
+			"client-acc": {AccountNumber: "client-acc", ClientId: 99, CurrencyCode: "RSD"},
+		},
+	}
+
+	exchange := defaultExchange()
+	svc := NewInvestmentFundService(
+		&fakeFundRepo{findByIDResult: fund}, positionRepo, &fakeListingRepo{},
+		&fakeInvestmentRepo{}, redemptionRepo, &fakeAssetOwnershipRepo{},
+		&fakeExchangeRepo{exchange: exchange}, &fakeStockRepo{},
+		&fakeOptionRepo{}, &fakeFuturesRepo{}, &fakeForexRepo{},
+		bankingClient, &fakeFundUserClient{}, nil,
+	)
+
+	err := svc.processPendingRedemption(context.Background(), redemption)
+	require.NoError(t, err)
+	require.Len(t, bankingClient.payments, 1)
+	require.Equal(t, "fund-acc", bankingClient.payments[0].PayerAccountNumber)
+	require.Equal(t, "client-acc", bankingClient.payments[0].RecipientAccountNumber)
+	require.NotNil(t, positionRepo.upserted)
+	require.Equal(t, 1500.0, positionRepo.upserted.TotalInvestedAmount)
+}
+
+func TestProcessPendingRedemption_BankingClientFails(t *testing.T) {
+	fund := &model.InvestmentFund{
+		FundID:        1,
+		Name:          "Test Fund",
+		AccountNumber: "fund-acc",
+	}
+	redemption := &model.ClientFundRedemption{
+		ClientFundRedemptionID: 10,
+		ClientID:               99,
+		OwnerType:              model.OwnerTypeClient,
+		FundID:                 1,
+		Fund:                   *fund,
+		AccountNumber:          "client-acc",
+		Amount:                 500,
+		Status:                 model.FundRedemptionPendingLiquidation,
+	}
+	positionRepo := &fakePositionRepo{
+		findResult: &model.ClientFundPosition{
+			ClientID:            99,
+			OwnerType:           model.OwnerTypeClient,
+			FundID:              1,
+			TotalInvestedAmount: 2000,
+		},
+	}
+
+	bankingClient := &fakeFundBankingClient{
+		accountsByNumber: map[string]*pb.GetAccountByNumberResponse{
+			"fund-acc":   {AccountNumber: "fund-acc", AvailableBalance: 5000, CurrencyCode: "RSD"},
+			"client-acc": {AccountNumber: "client-acc", ClientId: 99, CurrencyCode: "RSD"},
+		},
+		paymentErr: errors.New("payment service down"),
+	}
+
+	exchange := defaultExchange()
+	svc := NewInvestmentFundService(
+		&fakeFundRepo{findByIDResult: fund}, positionRepo, &fakeListingRepo{},
+		&fakeInvestmentRepo{}, &fakeRedemptionRepo{}, &fakeAssetOwnershipRepo{},
+		&fakeExchangeRepo{exchange: exchange}, &fakeStockRepo{},
+		&fakeOptionRepo{}, &fakeFuturesRepo{}, &fakeForexRepo{},
+		bankingClient, &fakeFundUserClient{}, nil,
+	)
+
+	err := svc.processPendingRedemption(context.Background(), redemption)
+	require.Error(t, err)
+	var appErr *commonErrors.AppError
+	require.True(t, errors.As(err, &appErr))
+	require.Equal(t, 503, appErr.Code)
+}
+
+func TestLiquidateFundAssets_EmptyOwnerships(t *testing.T) {
+	ownershipRepo := &fakeAssetOwnershipRepo{ownerships: []model.AssetOwnership{}}
+	svc := newTestFundService(&fakeFundRepo{}, ownershipRepo, &fakeListingRepo{}, &fakeFundBankingClient{}, &fakeFundUserClient{})
+
+	fund := &model.InvestmentFund{FundID: 1, AccountNumber: "fund-acc"}
+	count, err := svc.liquidateFundAssets(context.Background(), fund, 1000)
+	require.NoError(t, err)
+	require.Equal(t, 0, count)
+}
+
+func TestLiquidateFundAssets_OwnershipRepoError(t *testing.T) {
+	ownershipRepo := &fakeAssetOwnershipRepo{findErr: errors.New("db error")}
+	svc := newTestFundService(&fakeFundRepo{}, ownershipRepo, &fakeListingRepo{}, &fakeFundBankingClient{}, &fakeFundUserClient{})
+
+	fund := &model.InvestmentFund{FundID: 1, AccountNumber: "fund-acc"}
+	_, err := svc.liquidateFundAssets(context.Background(), fund, 1000)
+	require.Error(t, err)
+}
+
+func TestLiquidateFundAssets_AllZeroAmountOwnerships(t *testing.T) {
+	ownershipRepo := &fakeAssetOwnershipRepo{
+		ownerships: []model.AssetOwnership{
+			{AssetID: 1, Amount: 0},
+			{AssetID: 2, Amount: -1},
+		},
+	}
+	svc := newTestFundService(&fakeFundRepo{}, ownershipRepo, &fakeListingRepo{}, &fakeFundBankingClient{}, &fakeFundUserClient{})
+
+	fund := &model.InvestmentFund{FundID: 1, AccountNumber: "fund-acc"}
+	count, err := svc.liquidateFundAssets(context.Background(), fund, 1000)
+	require.NoError(t, err)
+	require.Equal(t, 0, count)
+}
+
+func TestLiquidateFundAssets_ListingRepoError(t *testing.T) {
+	ownershipRepo := &fakeAssetOwnershipRepo{
+		ownerships: []model.AssetOwnership{
+			{AssetID: 10, Amount: 5},
+		},
+	}
+	listingRepo := &fakeListingRepo{byAssetIDsErr: errors.New("listing db error")}
+	svc := newTestFundService(&fakeFundRepo{}, ownershipRepo, listingRepo, &fakeFundBankingClient{}, &fakeFundUserClient{})
+
+	fund := &model.InvestmentFund{FundID: 1, AccountNumber: "fund-acc"}
+	_, err := svc.liquidateFundAssets(context.Background(), fund, 1000)
+	require.Error(t, err)
+}
+
+func TestLiquidateFundAssets_CurrencyConversionError(t *testing.T) {
+	ownershipRepo := &fakeAssetOwnershipRepo{
+		ownerships: []model.AssetOwnership{
+			{AssetID: 10, Amount: 5},
+		},
+	}
+	exchange := &model.Exchange{Currency: "USD"}
+	listingRepo := &fakeListingRepo{
+		byAssetIDs: []model.Listing{
+			{ListingID: 100, AssetID: 10, Price: 50, Exchange: exchange},
+		},
+	}
+	bankingClient := &fakeFundBankingClient{
+		convertCurrencyFunc: func(amount float64, from, to string) (float64, error) {
+			return 0, errors.New("conversion service down")
+		},
+	}
+	svc := newTestFundService(&fakeFundRepo{}, ownershipRepo, listingRepo, bankingClient, &fakeFundUserClient{})
+
+	fund := &model.InvestmentFund{FundID: 1, AccountNumber: "fund-acc"}
+	_, err := svc.liquidateFundAssets(context.Background(), fund, 1000)
+	require.Error(t, err)
+	var appErr *commonErrors.AppError
+	require.True(t, errors.As(err, &appErr))
+	require.Equal(t, 503, appErr.Code)
+}
+
+func TestLiquidateFundAssets_NoCandidatesAfterFiltering(t *testing.T) {
+	ownershipRepo := &fakeAssetOwnershipRepo{
+		ownerships: []model.AssetOwnership{
+			{AssetID: 10, Amount: 5},
+		},
+	}
+	// listing has Price <= 0
+	listingRepo := &fakeListingRepo{
+		byAssetIDs: []model.Listing{
+			{ListingID: 100, AssetID: 10, Price: 0},
+		},
+	}
+	svc := newTestFundService(&fakeFundRepo{}, ownershipRepo, listingRepo, &fakeFundBankingClient{}, &fakeFundUserClient{})
+
+	fund := &model.InvestmentFund{FundID: 1, AccountNumber: "fund-acc"}
+	count, err := svc.liquidateFundAssets(context.Background(), fund, 1000)
+	require.NoError(t, err)
+	require.Equal(t, 0, count)
+}
+
+func TestLiquidateFundAssets_ConvertedPriceZero(t *testing.T) {
+	ownershipRepo := &fakeAssetOwnershipRepo{
+		ownerships: []model.AssetOwnership{
+			{AssetID: 10, Amount: 5},
+		},
+	}
+	listingRepo := &fakeListingRepo{
+		byAssetIDs: []model.Listing{
+			{ListingID: 100, AssetID: 10, Price: 50},
+		},
+	}
+	bankingClient := &fakeFundBankingClient{
+		convertCurrencyFunc: func(amount float64, from, to string) (float64, error) {
+			return 0, nil // price converts to zero
+		},
+	}
+	svc := newTestFundService(&fakeFundRepo{}, ownershipRepo, listingRepo, bankingClient, &fakeFundUserClient{})
+
+	fund := &model.InvestmentFund{FundID: 1, AccountNumber: "fund-acc"}
+	count, err := svc.liquidateFundAssets(context.Background(), fund, 1000)
+	require.NoError(t, err)
+	require.Equal(t, 0, count)
+}
+
+func TestLiquidateFundAssets_NilOrderService(t *testing.T) {
+	ownershipRepo := &fakeAssetOwnershipRepo{
+		ownerships: []model.AssetOwnership{
+			{AssetID: 10, Amount: 5},
+		},
+	}
+	listingRepo := &fakeListingRepo{
+		byAssetIDs: []model.Listing{
+			{ListingID: 100, AssetID: 10, Price: 50},
+		},
+	}
+	// newTestFundService passes nil for orderService
+	svc := newTestFundService(&fakeFundRepo{}, ownershipRepo, listingRepo, &fakeFundBankingClient{}, &fakeFundUserClient{})
+
+	fund := &model.InvestmentFund{FundID: 1, AccountNumber: "fund-acc"}
+	_, err := svc.liquidateFundAssets(context.Background(), fund, 1000)
+	require.Error(t, err)
+	var appErr *commonErrors.AppError
+	require.True(t, errors.As(err, &appErr))
+	require.Equal(t, 503, appErr.Code)
+}
+
+// newTestFundServiceWithOrderService creates an InvestmentFundService with a real
+// OrderService wired from fake repositories, suitable for testing liquidateFundAssets.
+func newTestFundServiceWithOrderService(
+	ownershipRepo *fakeAssetOwnershipRepo,
+	fundListingRepo *fakeListingRepo,
+	bankingClient *fakeFundBankingClient,
+	orderBankingClient *fakeOrderBankingClient,
+	orderListingRepo *fakeListingRepo,
+	orderRepo *fakeOrderRepo,
+	userClient *fakeUserServiceClient,
+) *InvestmentFundService {
+	exchange := defaultExchange()
+	orderSvc := NewOrderService(
+		orderRepo,
+		&fakeOrderTransactionRepo{},
+		&fakeExchangeRepo{exchange: exchange},
+		orderListingRepo,
+		ownershipRepo,
+		&fakeFuturesRepo{},
+		&fakeOptionRepo{},
+		&fakeFundRepo{},
+		userClient,
+		orderBankingClient,
+		&fakeTaxRecorder{},
+	)
+	return NewInvestmentFundService(
+		&fakeFundRepo{},
+		&fakePositionRepo{},
+		fundListingRepo,
+		&fakeInvestmentRepo{},
+		&fakeRedemptionRepo{},
+		ownershipRepo,
+		&fakeExchangeRepo{exchange: exchange},
+		&fakeStockRepo{},
+		&fakeOptionRepo{},
+		&fakeFuturesRepo{},
+		&fakeForexRepo{},
+		bankingClient,
+		&fakeFundUserClient{},
+		orderSvc,
+	)
+}
+
+func TestLiquidateFundAssets_SuccessfulLiquidation(t *testing.T) {
+	ownershipRepo := &fakeAssetOwnershipRepo{
+		ownerships: []model.AssetOwnership{
+			{AssetID: 10, Amount: 5, UserId: 1, OwnerType: model.OwnerTypeFund},
+		},
+	}
+	fundListingRepo := &fakeListingRepo{
+		byAssetIDs: []model.Listing{
+			{ListingID: 100, AssetID: 10, Price: 200, ExchangeMIC: "XTST"},
+		},
+	}
+	// Used by OrderService.CreateFundLiquidationOrder -> placeOrder -> listingRepo.FindByID
+	orderListingRepo := &fakeListingRepo{
+		listing: &model.Listing{
+			ListingID:   100,
+			AssetID:     10,
+			Price:       200,
+			Ask:         201,
+			ExchangeMIC: "XTST",
+			// nil Asset skips settlement date validation and sell ownership check
+		},
+	}
+	orderBankingClient := &fakeOrderBankingClient{
+		accountResp: &pb.GetAccountByNumberResponse{
+			AccountNumber:    "fund-acc",
+			AccountType:      "Fund",
+			AvailableBalance: 50000,
+		},
+	}
+	userClient := &fakeUserServiceClient{
+		employeeResp: &pb.GetEmployeeByIdResponse{
+			Id:           25,
+			IsSupervisor: true,
+			IsAgent:      true,
+		},
+	}
+	orderRepo := &fakeOrderRepo{}
+
+	svc := newTestFundServiceWithOrderService(
+		ownershipRepo, fundListingRepo, &fakeFundBankingClient{},
+		orderBankingClient, orderListingRepo, orderRepo, userClient,
+	)
+
+	fund := &model.InvestmentFund{FundID: 1, ManagerID: 25, AccountNumber: "fund-acc"}
+	count, err := svc.liquidateFundAssets(context.Background(), fund, 500)
+	require.NoError(t, err)
+	require.Equal(t, 1, count)
+	require.NotNil(t, orderRepo.capturedOrder)
+	require.Equal(t, model.OrderDirectionSell, orderRepo.capturedOrder.Direction)
+}
+
+func TestLiquidateFundAssets_OrderCreationError(t *testing.T) {
+	ownershipRepo := &fakeAssetOwnershipRepo{
+		ownerships: []model.AssetOwnership{
+			{AssetID: 10, Amount: 5, UserId: 1, OwnerType: model.OwnerTypeFund},
+		},
+	}
+	fundListingRepo := &fakeListingRepo{
+		byAssetIDs: []model.Listing{
+			{ListingID: 100, AssetID: 10, Price: 200, ExchangeMIC: "XTST"},
+		},
+	}
+	// Make the order listing repo return nil to trigger a "listing not found" error in placeOrder
+	orderListingRepo := &fakeListingRepo{listing: nil}
+	orderBankingClient := &fakeOrderBankingClient{
+		accountResp: &pb.GetAccountByNumberResponse{
+			AccountNumber: "fund-acc",
+			AccountType:   "Fund",
+		},
+	}
+	orderRepo := &fakeOrderRepo{}
+	userClient := &fakeUserServiceClient{}
+
+	svc := newTestFundServiceWithOrderService(
+		ownershipRepo, fundListingRepo, &fakeFundBankingClient{},
+		orderBankingClient, orderListingRepo, orderRepo, userClient,
+	)
+
+	fund := &model.InvestmentFund{FundID: 1, ManagerID: 25, AccountNumber: "fund-acc"}
+	count, err := svc.liquidateFundAssets(context.Background(), fund, 500)
+	require.Error(t, err)
+	require.Equal(t, 0, count)
+}
+
+func TestLiquidateFundAssets_MultipleCandidatesWithBudget(t *testing.T) {
+	ownershipRepo := &fakeAssetOwnershipRepo{
+		ownerships: []model.AssetOwnership{
+			{AssetID: 10, Amount: 3, UserId: 1, OwnerType: model.OwnerTypeFund},
+			{AssetID: 20, Amount: 10, UserId: 1, OwnerType: model.OwnerTypeFund},
+		},
+	}
+	fundListingRepo := &fakeListingRepo{
+		byAssetIDs: []model.Listing{
+			{ListingID: 100, AssetID: 10, Price: 500, ExchangeMIC: "XTST"},
+			{ListingID: 200, AssetID: 20, Price: 100, ExchangeMIC: "XTST"},
+		},
+	}
+	// Both listings returned by FindByID in order
+	callCount := 0
+	orderListingRepo := &fakeListingRepo{}
+	// We need FindByID to return different listings for different IDs.
+	// fakeListingRepo only has one listing field, so the same listing is returned
+	// for both calls. We'll set it to a generic one that works for both.
+	orderListingRepo.listing = &model.Listing{
+		ListingID:   100,
+		AssetID:     10,
+		Price:       500,
+		Ask:         501,
+		ExchangeMIC: "XTST",
+	}
+	_ = callCount // not needed with single listing stub
+
+	orderBankingClient := &fakeOrderBankingClient{
+		accountResp: &pb.GetAccountByNumberResponse{
+			AccountNumber:    "fund-acc",
+			AccountType:      "Fund",
+			AvailableBalance: 50000,
+		},
+	}
+	userClient := &fakeUserServiceClient{
+		employeeResp: &pb.GetEmployeeByIdResponse{
+			Id:           25,
+			IsSupervisor: true,
+			IsAgent:      true,
+		},
+	}
+	orderRepo := &fakeOrderRepo{}
+
+	svc := newTestFundServiceWithOrderService(
+		ownershipRepo, fundListingRepo, &fakeFundBankingClient{},
+		orderBankingClient, orderListingRepo, orderRepo, userClient,
+	)
+
+	// Target = 800 RSD, candidate 1 value = 3*500=1500 (highest), candidate 2 = 10*100=1000
+	// Sorted by value: candidate 1 first. Need ceil(800/500)=2 units, available 3. Creates order for 2.
+	// remaining = 800 - 2*500 = -200, so loop breaks after first candidate.
+	fund := &model.InvestmentFund{FundID: 1, ManagerID: 25, AccountNumber: "fund-acc"}
+	count, err := svc.liquidateFundAssets(context.Background(), fund, 800)
+	require.NoError(t, err)
+	require.Equal(t, 1, count) // only first candidate needed
+}
+
+func TestLiquidateFundAssets_ListingNoMatchingOwnership(t *testing.T) {
+	ownershipRepo := &fakeAssetOwnershipRepo{
+		ownerships: []model.AssetOwnership{
+			{AssetID: 10, Amount: 5},
+		},
+	}
+	// Listing for a different assetID that has no ownership
+	listingRepo := &fakeListingRepo{
+		byAssetIDs: []model.Listing{
+			{ListingID: 100, AssetID: 99, Price: 50},
+		},
+	}
+	svc := newTestFundService(&fakeFundRepo{}, ownershipRepo, listingRepo, &fakeFundBankingClient{}, &fakeFundUserClient{})
+
+	fund := &model.InvestmentFund{FundID: 1, AccountNumber: "fund-acc"}
+	count, err := svc.liquidateFundAssets(context.Background(), fund, 1000)
+	require.NoError(t, err)
+	require.Equal(t, 0, count)
+}
+
+func TestLiquidateFundAssets_FractionalAmount(t *testing.T) {
+	// Ownership amount is 0.5 -> math.Floor(0.5) = 0, should skip candidate
+	ownershipRepo := &fakeAssetOwnershipRepo{
+		ownerships: []model.AssetOwnership{
+			{AssetID: 10, Amount: 0.5},
+		},
+	}
+	listingRepo := &fakeListingRepo{
+		byAssetIDs: []model.Listing{
+			{ListingID: 100, AssetID: 10, Price: 100},
+		},
+	}
+
+	orderBankingClient := &fakeOrderBankingClient{
+		accountResp: &pb.GetAccountByNumberResponse{
+			AccountNumber: "fund-acc",
+			AccountType:   "Fund",
+		},
+	}
+	userClient := &fakeUserServiceClient{
+		employeeResp: &pb.GetEmployeeByIdResponse{
+			Id:           25,
+			IsSupervisor: true,
+		},
+	}
+	orderRepo := &fakeOrderRepo{}
+	orderListingRepo := &fakeListingRepo{
+		listing: &model.Listing{ListingID: 100, AssetID: 10, Price: 100, ExchangeMIC: "XTST"},
+	}
+
+	svc := newTestFundServiceWithOrderService(
+		ownershipRepo, listingRepo, &fakeFundBankingClient{},
+		orderBankingClient, orderListingRepo, orderRepo, userClient,
+	)
+
+	fund := &model.InvestmentFund{FundID: 1, ManagerID: 25, AccountNumber: "fund-acc"}
+	count, err := svc.liquidateFundAssets(context.Background(), fund, 1000)
+	require.NoError(t, err)
+	require.Equal(t, 0, count)
+}
+
+func TestLiquidateFundAssets_ExchangeCurrencyUsed(t *testing.T) {
+	ownershipRepo := &fakeAssetOwnershipRepo{
+		ownerships: []model.AssetOwnership{
+			{AssetID: 10, Amount: 5},
+		},
+	}
+	exchange := &model.Exchange{Currency: "EUR"}
+	listingRepo := &fakeListingRepo{
+		byAssetIDs: []model.Listing{
+			{ListingID: 100, AssetID: 10, Price: 50, Exchange: exchange},
+		},
+	}
+	var capturedFrom string
+	bankingClient := &fakeFundBankingClient{
+		convertCurrencyFunc: func(amount float64, from, to string) (float64, error) {
+			capturedFrom = from
+			return amount * 117.0, nil // EUR -> RSD
+		},
+	}
+	// nil orderService so we hit that error, but at least verify currency was EUR
+	svc := newTestFundService(&fakeFundRepo{}, ownershipRepo, listingRepo, bankingClient, &fakeFundUserClient{})
+
+	fund := &model.InvestmentFund{FundID: 1, AccountNumber: "fund-acc"}
+	_, _ = svc.liquidateFundAssets(context.Background(), fund, 1000)
+	require.Equal(t, "EUR", capturedFrom)
+}
+
+func TestValidateFundAccount_GRPCNotFoundError(t *testing.T) {
+	bankingClient := &testCustomBankingClient{
+		getAccountByNumberFunc: func(_ context.Context, _ string) (*pb.GetAccountByNumberResponse, error) {
+			return nil, status.Error(codes.NotFound, "account not found")
+		},
+	}
+	exchange := defaultExchange()
+	svc := NewInvestmentFundService(
+		&fakeFundRepo{}, &fakePositionRepo{}, &fakeListingRepo{},
+		&fakeInvestmentRepo{}, &fakeRedemptionRepo{}, &fakeAssetOwnershipRepo{},
+		&fakeExchangeRepo{exchange: exchange}, &fakeStockRepo{},
+		&fakeOptionRepo{}, &fakeFuturesRepo{}, &fakeForexRepo{},
+		bankingClient, &fakeFundUserClient{}, nil,
+	)
+
+	clientID := uint(99)
+	authCtx := &auth.AuthContext{
+		IdentityID:   1,
+		IdentityType: auth.IdentityClient,
+		ClientID:     &clientID,
+	}
+	_, err := svc.validateFundAccount(context.Background(), "ACC-123", authCtx)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "not found")
+}
+
+func TestValidateFundAccount_GRPCOtherError(t *testing.T) {
+	bankingClient := &testCustomBankingClient{
+		getAccountByNumberFunc: func(_ context.Context, _ string) (*pb.GetAccountByNumberResponse, error) {
+			return nil, status.Error(codes.Internal, "internal error")
+		},
+	}
+	exchange := defaultExchange()
+	svc := NewInvestmentFundService(
+		&fakeFundRepo{}, &fakePositionRepo{}, &fakeListingRepo{},
+		&fakeInvestmentRepo{}, &fakeRedemptionRepo{}, &fakeAssetOwnershipRepo{},
+		&fakeExchangeRepo{exchange: exchange}, &fakeStockRepo{},
+		&fakeOptionRepo{}, &fakeFuturesRepo{}, &fakeForexRepo{},
+		bankingClient, &fakeFundUserClient{}, nil,
+	)
+
+	clientID := uint(99)
+	authCtx := &auth.AuthContext{
+		IdentityID:   1,
+		IdentityType: auth.IdentityClient,
+		ClientID:     &clientID,
+	}
+	_, err := svc.validateFundAccount(context.Background(), "ACC-123", authCtx)
+	require.Error(t, err)
+	var appErr *commonErrors.AppError
+	require.True(t, errors.As(err, &appErr))
+	require.Equal(t, 503, appErr.Code)
+}
+
+func TestValidateFundAccount_NilAccount(t *testing.T) {
+	bankingClient := &testCustomBankingClient{
+		getAccountByNumberFunc: func(_ context.Context, _ string) (*pb.GetAccountByNumberResponse, error) {
+			return nil, nil
+		},
+	}
+	exchange := defaultExchange()
+	svc := NewInvestmentFundService(
+		&fakeFundRepo{}, &fakePositionRepo{}, &fakeListingRepo{},
+		&fakeInvestmentRepo{}, &fakeRedemptionRepo{}, &fakeAssetOwnershipRepo{},
+		&fakeExchangeRepo{exchange: exchange}, &fakeStockRepo{},
+		&fakeOptionRepo{}, &fakeFuturesRepo{}, &fakeForexRepo{},
+		bankingClient, &fakeFundUserClient{}, nil,
+	)
+
+	clientID := uint(99)
+	authCtx := &auth.AuthContext{
+		IdentityID:   1,
+		IdentityType: auth.IdentityClient,
+		ClientID:     &clientID,
+	}
+	_, err := svc.validateFundAccount(context.Background(), "ACC-123", authCtx)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "not found")
+}
+
+func TestValidateFundAccount_ClientDoesNotOwnAccount(t *testing.T) {
+	bankingClient := &testCustomBankingClient{
+		getAccountByNumberFunc: func(_ context.Context, _ string) (*pb.GetAccountByNumberResponse, error) {
+			return &pb.GetAccountByNumberResponse{
+				AccountNumber: "ACC-123",
+				ClientId:      999, // different client
+				AccountType:   "Current",
+			}, nil
+		},
+	}
+	exchange := defaultExchange()
+	svc := NewInvestmentFundService(
+		&fakeFundRepo{}, &fakePositionRepo{}, &fakeListingRepo{},
+		&fakeInvestmentRepo{}, &fakeRedemptionRepo{}, &fakeAssetOwnershipRepo{},
+		&fakeExchangeRepo{exchange: exchange}, &fakeStockRepo{},
+		&fakeOptionRepo{}, &fakeFuturesRepo{}, &fakeForexRepo{},
+		bankingClient, &fakeFundUserClient{}, nil,
+	)
+
+	clientID := uint(99)
+	authCtx := &auth.AuthContext{
+		IdentityID:   1,
+		IdentityType: auth.IdentityClient,
+		ClientID:     &clientID,
+	}
+	_, err := svc.validateFundAccount(context.Background(), "ACC-123", authCtx)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "does not belong")
+}
+
+func TestValidateFundAccount_ClientNilClientID(t *testing.T) {
+	bankingClient := &testCustomBankingClient{
+		getAccountByNumberFunc: func(_ context.Context, _ string) (*pb.GetAccountByNumberResponse, error) {
+			return &pb.GetAccountByNumberResponse{
+				AccountNumber: "ACC-123",
+				ClientId:      99,
+				AccountType:   "Current",
+			}, nil
+		},
+	}
+	exchange := defaultExchange()
+	svc := NewInvestmentFundService(
+		&fakeFundRepo{}, &fakePositionRepo{}, &fakeListingRepo{},
+		&fakeInvestmentRepo{}, &fakeRedemptionRepo{}, &fakeAssetOwnershipRepo{},
+		&fakeExchangeRepo{exchange: exchange}, &fakeStockRepo{},
+		&fakeOptionRepo{}, &fakeFuturesRepo{}, &fakeForexRepo{},
+		bankingClient, &fakeFundUserClient{}, nil,
+	)
+
+	authCtx := &auth.AuthContext{
+		IdentityID:   1,
+		IdentityType: auth.IdentityClient,
+		ClientID:     nil, // nil client ID
+	}
+	_, err := svc.validateFundAccount(context.Background(), "ACC-123", authCtx)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "does not belong")
+}
+
+func TestValidateFundAccount_EmployeeNonBankAccount(t *testing.T) {
+	bankingClient := &testCustomBankingClient{
+		getAccountByNumberFunc: func(_ context.Context, _ string) (*pb.GetAccountByNumberResponse, error) {
+			return &pb.GetAccountByNumberResponse{
+				AccountNumber: "ACC-123",
+				AccountType:   "Current", // not Bank
+			}, nil
+		},
+	}
+	exchange := defaultExchange()
+	svc := NewInvestmentFundService(
+		&fakeFundRepo{}, &fakePositionRepo{}, &fakeListingRepo{},
+		&fakeInvestmentRepo{}, &fakeRedemptionRepo{}, &fakeAssetOwnershipRepo{},
+		&fakeExchangeRepo{exchange: exchange}, &fakeStockRepo{},
+		&fakeOptionRepo{}, &fakeFuturesRepo{}, &fakeForexRepo{},
+		bankingClient, &fakeFundUserClient{}, nil,
+	)
+
+	employeeID := uint(25)
+	authCtx := &auth.AuthContext{
+		IdentityID:   200,
+		IdentityType: auth.IdentityEmployee,
+		EmployeeID:   &employeeID,
+	}
+	_, err := svc.validateFundAccount(context.Background(), "ACC-123", authCtx)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "bank account")
+}
+
+func TestValidateFundAccount_ClientSuccess(t *testing.T) {
+	bankingClient := &testCustomBankingClient{
+		getAccountByNumberFunc: func(_ context.Context, _ string) (*pb.GetAccountByNumberResponse, error) {
+			return &pb.GetAccountByNumberResponse{
+				AccountNumber: "ACC-123",
+				ClientId:      99,
+				AccountType:   "Current",
+			}, nil
+		},
+	}
+	exchange := defaultExchange()
+	svc := NewInvestmentFundService(
+		&fakeFundRepo{}, &fakePositionRepo{}, &fakeListingRepo{},
+		&fakeInvestmentRepo{}, &fakeRedemptionRepo{}, &fakeAssetOwnershipRepo{},
+		&fakeExchangeRepo{exchange: exchange}, &fakeStockRepo{},
+		&fakeOptionRepo{}, &fakeFuturesRepo{}, &fakeForexRepo{},
+		bankingClient, &fakeFundUserClient{}, nil,
+	)
+
+	clientID := uint(99)
+	authCtx := &auth.AuthContext{
+		IdentityID:   1,
+		IdentityType: auth.IdentityClient,
+		ClientID:     &clientID,
+	}
+	account, err := svc.validateFundAccount(context.Background(), "ACC-123", authCtx)
+	require.NoError(t, err)
+	require.NotNil(t, account)
+	require.Equal(t, "ACC-123", account.GetAccountNumber())
+}
+
+func TestValidateFundAccount_EmployeeBankAccountSuccess(t *testing.T) {
+	bankingClient := &testCustomBankingClient{
+		getAccountByNumberFunc: func(_ context.Context, _ string) (*pb.GetAccountByNumberResponse, error) {
+			return &pb.GetAccountByNumberResponse{
+				AccountNumber: "BANK-ACC",
+				AccountType:   "Bank",
+			}, nil
+		},
+	}
+	exchange := defaultExchange()
+	svc := NewInvestmentFundService(
+		&fakeFundRepo{}, &fakePositionRepo{}, &fakeListingRepo{},
+		&fakeInvestmentRepo{}, &fakeRedemptionRepo{}, &fakeAssetOwnershipRepo{},
+		&fakeExchangeRepo{exchange: exchange}, &fakeStockRepo{},
+		&fakeOptionRepo{}, &fakeFuturesRepo{}, &fakeForexRepo{},
+		bankingClient, &fakeFundUserClient{}, nil,
+	)
+
+	employeeID := uint(25)
+	authCtx := &auth.AuthContext{
+		IdentityID:   200,
+		IdentityType: auth.IdentityEmployee,
+		EmployeeID:   &employeeID,
+	}
+	account, err := svc.validateFundAccount(context.Background(), "BANK-ACC", authCtx)
+	require.NoError(t, err)
+	require.NotNil(t, account)
+	require.Equal(t, "BANK-ACC", account.GetAccountNumber())
 }

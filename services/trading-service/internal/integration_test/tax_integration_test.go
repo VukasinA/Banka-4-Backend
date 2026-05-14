@@ -106,3 +106,55 @@ func TestCollectTaxes_ForbiddenForClient(t *testing.T) {
 	rec := performRequest(t, router, http.MethodPost, "/api/tax/collect", nil, auth)
 	require.NotEqual(t, http.StatusOK, rec.Code)
 }
+
+func TestGetClientAccumulatedTax_Success(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router, _ := setupTestRouter(t, db)
+
+	auth := authHeaderForClient(t, 50, 1)
+
+	rec := performRequest(t, router, http.MethodGet, "/api/client/1/accumulated-tax", nil, auth)
+	requireStatus(t, rec, http.StatusOK)
+
+	resp := decodeResponse[map[string]any](t, rec)
+	_, hasTotalTax := resp["totalTax"]
+	require.True(t, hasTotalTax)
+}
+
+func TestGetClientAccumulatedTax_InvalidID(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router, _ := setupTestRouter(t, db)
+
+	auth := authHeaderForClient(t, 50, 1)
+
+	rec := performRequest(t, router, http.MethodGet, "/api/client/abc/accumulated-tax", nil, auth)
+	require.NotEqual(t, http.StatusOK, rec.Code)
+}
+
+func TestGetActuaryAccumulatedTax_Success(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router, _ := setupTestRouter(t, db)
+
+	auth := authHeaderForSupervisor(t)
+
+	rec := performRequest(t, router, http.MethodGet, "/api/actuary/10/accumulated-tax", nil, auth)
+	requireStatus(t, rec, http.StatusOK)
+
+	resp := decodeResponse[map[string]any](t, rec)
+	_, hasTotalTax := resp["totalTax"]
+	require.True(t, hasTotalTax)
+}
+
+func TestGetActuaryAccumulatedTax_InvalidID(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router, _ := setupTestRouter(t, db)
+
+	auth := authHeaderForSupervisor(t)
+
+	rec := performRequest(t, router, http.MethodGet, "/api/actuary/abc/accumulated-tax", nil, auth)
+	require.NotEqual(t, http.StatusOK, rec.Code)
+}

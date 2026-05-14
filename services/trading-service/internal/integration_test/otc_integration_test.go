@@ -657,6 +657,53 @@ func TestOTCHandler_GetPublicOTCAssets_UnpublishedNotIncluded(t *testing.T) {
 	}
 }
 
+func TestOTCHandler_PublishAssetClient_InvalidOwnershipID(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router, _ := setupTestRouter(t, db)
+
+	rec := performRequest(t, router, http.MethodPatch, "/api/client/50/assets/abc/publish", map[string]any{"amount": 1}, authHeaderForClient(t, 50, 50))
+	requireStatus(t, rec, http.StatusBadRequest)
+}
+
+func TestOTCHandler_PublishAssetActuary_InvalidOwnershipID(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router, _ := setupTestRouter(t, db)
+
+	rec := performRequest(t, router, http.MethodPatch, "/api/actuary/10/assets/abc/publish", map[string]any{"amount": 1}, authHeaderForSupervisor(t))
+	requireStatus(t, rec, http.StatusBadRequest)
+}
+
+func TestOTC_AcceptOffer_InvalidID(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router, _ := setupTestRouter(t, db)
+
+	rec := performRequest(t, router, http.MethodPatch, "/api/otc/offers/abc/accept", nil, authHeaderForClient(t, 50, 50))
+	requireStatus(t, rec, http.StatusBadRequest)
+}
+
+func TestOTC_RejectOffer_InvalidID(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router, _ := setupTestRouter(t, db)
+
+	rec := performRequest(t, router, http.MethodPatch, "/api/otc/offers/abc/reject", nil, authHeaderForClient(t, 50, 50))
+	requireStatus(t, rec, http.StatusBadRequest)
+}
+
+func TestOTC_ExerciseContract_InvalidID(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router, _ := setupTestRouter(t, db)
+
+	rec := performRequest(t, router, http.MethodPost, "/api/otc/contracts/abc/exercise", map[string]any{
+		"account_number": "444000100000000001",
+	}, authHeaderForSupervisor(t))
+	requireStatus(t, rec, http.StatusBadRequest)
+}
+
 func TestOTCHandler_GetPublicOTCAssets_Unauthenticated(t *testing.T) {
 	t.Parallel()
 	db := setupTestDB(t)

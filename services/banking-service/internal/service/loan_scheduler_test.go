@@ -11,8 +11,6 @@ import (
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/banking-service/internal/model"
 )
 
-// ── Fake Scheduler Loan Repository ──────────────────────────────────────────
-
 type fakeSchedulerLoanRepo struct {
 	loan                 *model.Loan
 	loans                []model.Loan
@@ -90,8 +88,6 @@ func (f *fakeSchedulerLoanRepo) FindActiveVariableRateLoans(_ context.Context) (
 	return f.loans, f.variableRateLoansErr
 }
 
-// ── Fake Scheduler Mailer ───────────────────────────────────────────────────
-
 type fakeSchedulerMailer struct {
 	sentTo      []string
 	sentSubject []string
@@ -103,8 +99,6 @@ func (f *fakeSchedulerMailer) Send(to, subject, body string) error {
 	f.sentSubject = append(f.sentSubject, subject)
 	return f.sendErr
 }
-
-// ── Helper ──────────────────────────────────────────────────────────────────
 
 func newScheduler(
 	loanRepo *fakeSchedulerLoanRepo,
@@ -148,8 +142,6 @@ func newScheduler(
 	return NewLoanScheduler(loanRepo, accRepo, txRepo, txProcessor, txManager, mailer, userClient, loanSvc)
 }
 
-// ── nextMidnight Tests ──────────────────────────────────────────────────────
-
 func TestNextMidnight_ReturnsTimeInFuture(t *testing.T) {
 	t.Parallel()
 	result := nextMidnight()
@@ -173,8 +165,6 @@ func TestNextMidnight_WithinNext24Hours(t *testing.T) {
 	require.True(t, diff <= 24*time.Hour)
 }
 
-// ── nextFirstOfMonth Tests ──────────────────────────────────────────────────
-
 func TestNextFirstOfMonth_ReturnsTimeInFuture(t *testing.T) {
 	t.Parallel()
 	result := nextFirstOfMonth()
@@ -197,8 +187,6 @@ func TestNextFirstOfMonth_WithinNext32Days(t *testing.T) {
 	require.True(t, diff > 0)
 	require.True(t, diff <= 32*24*time.Hour)
 }
-
-// ── onInstallmentPaid Tests ─────────────────────────────────────────────────
 
 func TestOnInstallmentPaid_SetsInstallmentFields(t *testing.T) {
 	t.Parallel()
@@ -379,8 +367,6 @@ func TestOnInstallmentPaid_UpdateLoanError(t *testing.T) {
 	require.Error(t, err)
 }
 
-// ── onInstallmentFailed Tests ───────────────────────────────────────────────
-
 func TestOnInstallmentFailed_FirstFailure_SetsRetrying(t *testing.T) {
 	t.Parallel()
 
@@ -492,8 +478,6 @@ func TestOnInstallmentFailed_UpdateInstallmentError_DoesNotPanic(t *testing.T) {
 	require.Len(t, mailer.sentTo, 0)
 }
 
-// ── sendFailureNotification Tests ───────────────────────────────────────────
-
 func TestSendFailureNotification_RetryingStatus(t *testing.T) {
 	t.Parallel()
 
@@ -555,8 +539,6 @@ func TestSendFailureNotification_UserClientError_DoesNotPanic(t *testing.T) {
 	require.Len(t, mailer.sentTo, 0)
 }
 
-// ── processDueInstallments Tests ────────────────────────────────────────────
-
 func TestProcessDueInstallments_NoInstallments(t *testing.T) {
 	t.Parallel()
 
@@ -577,8 +559,6 @@ func TestProcessDueInstallments_FindDueError(t *testing.T) {
 	sched.processDueInstallments(context.Background())
 }
 
-// ── processRetryInstallments Tests ──────────────────────────────────────────
-
 func TestProcessRetryInstallments_NoInstallments(t *testing.T) {
 	t.Parallel()
 
@@ -598,8 +578,6 @@ func TestProcessRetryInstallments_FindRetryError(t *testing.T) {
 	// Should not panic, just logs
 	sched.processRetryInstallments(context.Background())
 }
-
-// ── processInstallment Tests ────────────────────────────────────────────────
 
 func TestProcessInstallment_AccountNotFound(t *testing.T) {
 	t.Parallel()
@@ -669,4 +647,134 @@ func TestProcessInstallment_InsufficientFunds_TriggersFailure(t *testing.T) {
 
 	// Installment should be set to retrying
 	require.Equal(t, model.InstallmentStatusRetrying, installment.Status)
+}
+
+func TestProcessInstallment_NoBankAccountForCurrency(t *testing.T) {
+	t.Parallel()
+
+	loanRepo := &fakeSchedulerLoanRepo{}
+	accRepo := &fakeLoanAccountRepo{
+		account: &model.Account{
+			AccountNumber:    "client-account",
+			AvailableBalance: 100_000,
+			Currency:         model.Currency{Code: model.CurrencyCode("XYZ")},
+		},
+	}
+	mailer := &fakeSchedulerMailer{}
+
+	txRepo := &fakeLoanTransactionRepo{}
+	txManager := &fakeBankingTxManager{}
+	txProcessor := NewTransactionProcessor(accRepo, txRepo, txManager)
+	loanSvc := NewLoanService(accRepo, nil, nil, loanRepo, txProcessor, txManager, &fakeUserClient{}, mailer)
+
+	sched := NewLoanScheduler(loanRepo, accRepo, txRepo, txProcessor, txManager, mailer, &fakeUserClient{}, loanSvc)
+
+	installment := &model.LoanInstallment{
+		ID:     1,
+		Amount: 5000,
+		Status: model.InstallmentStatusPending,
+		Loan: model.Loan{
+			ID: 1,
+			LoanRequest: model.LoanRequest{
+				AccountNumber: "client-account",
+				ClientID:      1,
+			},
+		},
+	}
+
+	// Should not panic, just logs and returns early
+	sched.processInstallment(context.Background(), installment)
+}
+
+func TestProcessInstallment_TransactionCreateError(t *testing.T) {
+	t.Parallel()
+
+	loanRepo := &fakeSchedulerLoanRepo{}
+	accRepo := &fakeLoanAccountRepo{
+		account: &model.Account{
+			AccountNumber:    "client-account",
+			AvailableBalance: 100_000,
+			Currency:         model.Currency{Code: model.RSD},
+		},
+	}
+	mailer := &fakeSchedulerMailer{}
+	txRepo := &fakeLoanTransactionRepo{createErr: fmt.Errorf("db error")}
+	txManager := &fakeBankingTxManager{}
+	txProcessor := NewTransactionProcessor(accRepo, txRepo, txManager)
+	loanSvc := NewLoanService(accRepo, nil, nil, loanRepo, txProcessor, txManager, &fakeUserClient{}, mailer)
+
+	sched := NewLoanScheduler(loanRepo, accRepo, txRepo, txProcessor, txManager, mailer, &fakeUserClient{}, loanSvc)
+
+	installment := &model.LoanInstallment{
+		ID:     1,
+		Amount: 5000,
+		Status: model.InstallmentStatusPending,
+		Loan: model.Loan{
+			ID: 1,
+			LoanRequest: model.LoanRequest{
+				AccountNumber: "client-account",
+				ClientID:      1,
+			},
+		},
+	}
+
+	sched.processInstallment(context.Background(), installment)
+
+	// Should trigger failure path since transaction create fails
+	require.Equal(t, model.InstallmentStatusRetrying, installment.Status)
+}
+
+func TestProcessInstallment_Success(t *testing.T) {
+	t.Parallel()
+
+	loanRepo := &fakeSchedulerLoanRepo{}
+	accRepo := &fakeLoanAccountRepo{
+		accounts: map[string]*model.Account{
+			"client-account": {
+				AccountNumber:    "client-account",
+				AvailableBalance: 1_000_000,
+				DailyLimit:       10_000_000,
+				MonthlyLimit:     100_000_000,
+				Currency:         model.Currency{Code: model.RSD},
+			},
+			BankAccounts[model.RSD]: {
+				AccountNumber:    BankAccounts[model.RSD],
+				AvailableBalance: 1_000_000,
+				DailyLimit:       10_000_000,
+				MonthlyLimit:     100_000_000,
+				Currency:         model.Currency{Code: model.RSD},
+			},
+		},
+	}
+	mailer := &fakeSchedulerMailer{}
+	txRepo := &fakeLoanTransactionRepo{}
+	txManager := &fakeBankingTxManager{}
+	txProcessor := NewTransactionProcessor(accRepo, txRepo, txManager)
+	loanSvc := NewLoanService(accRepo, nil, nil, loanRepo, txProcessor, txManager, &fakeUserClient{}, mailer)
+
+	sched := NewLoanScheduler(loanRepo, accRepo, txRepo, txProcessor, txManager, mailer, &fakeUserClient{}, loanSvc)
+
+	installment := &model.LoanInstallment{
+		ID:     1,
+		Amount: 5000,
+		Status: model.InstallmentStatusPending,
+		Loan: model.Loan{
+			ID:                  1,
+			RemainingDebt:       50000,
+			PaidInstallments:    2,
+			RepaymentPeriod:     12,
+			NextInstallmentDate: time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC),
+			Status:              model.LoanStatusActive,
+			LoanRequest: model.LoanRequest{
+				AccountNumber: "client-account",
+				ClientID:      1,
+			},
+		},
+	}
+
+	sched.processInstallment(context.Background(), installment)
+
+	// On success the installment should be marked as paid
+	require.Equal(t, model.InstallmentStatusPaid, installment.Status)
+	require.NotNil(t, installment.PaidAt)
 }

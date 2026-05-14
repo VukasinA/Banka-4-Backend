@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/RAF-SI-2025/Banka-4-Backend/common/pkg/auth"
+	commonjwt "github.com/RAF-SI-2025/Banka-4-Backend/common/pkg/jwt"
 	"github.com/RAF-SI-2025/Banka-4-Backend/common/pkg/permission"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/user-service/internal/model"
 
@@ -393,4 +394,82 @@ func TestUpdateClientInvalidID(t *testing.T) {
 
 	recorder := performRequest(t, router, http.MethodPatch, "/api/clients/abc", map[string]any{"first_name": "Test"}, authHeader(t, updaterIdentity.ID))
 	requireStatus(t, recorder, http.StatusBadRequest)
+}
+
+func clientAuthHeader(t *testing.T, identityID, clientID uint) string {
+	t.Helper()
+
+	cid := clientID
+	token, err := commonjwt.GenerateToken(&commonjwt.Claims{
+		IdentityID:   identityID,
+		IdentityType: string(auth.IdentityClient),
+		ClientID:     &cid,
+	}, testConfig().JWTSecret, testConfig().JWTExpiry)
+	if err != nil {
+		t.Fatalf("generate client auth token: %v", err)
+	}
+
+	return "Bearer " + token
+}
+
+func TestGetMobileSecret_Success(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	router := setupTestRouter(t, db)
+	position := seedPosition(t, db)
+	empIdentity, _ := seedEmployee(t, db, position.PositionID)
+	empAuth := authHeader(t, empIdentity.ID)
+
+	email := fmt.Sprintf("mobile-secret-%d@example.com", uniqueCounter.Add(1))
+	username := fmt.Sprintf("mobile-secret-%d", uniqueCounter.Add(1))
+
+	performRequest(t, router, http.MethodPost, "/api/clients/register", map[string]any{
+		"first_name":    "Secret",
+		"last_name":     "Client",
+		"date_of_birth": time.Now().UTC().AddDate(-28, 0, 0).Format(time.RFC3339),
+		"gender":        "male",
+		"email":         email,
+		"username":      username,
+		"phone_number":  "0601111111",
+		"address":       "Street 1",
+	}, empAuth)
+
+	var identity model.Identity
+	require.NoError(t, db.Where("email = ?", email).First(&identity).Error)
+
+	var client model.Client
+	require.NoError(t, db.Where("identity_id = ?", identity.ID).First(&client).Error)
+
+	db.Model(&client).Update("mobile_verification_secret", "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP")
+
+	cAuth := clientAuthHeader(t, identity.ID, client.ClientID)
+
+	rec := performRequest(t, router, http.MethodGet, "/api/secret-mobile", nil, cAuth)
+	requireStatus(t, rec, http.StatusOK)
+
+	resp := decodeResponse[map[string]any](t, rec)
+	require.Equal(t, "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP", resp["secret"])
+}
+
+func TestGetMobileSecret_NotFound(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	router := setupTestRouter(t, db)
+
+	cAuth := clientAuthHeader(t, 99999, 99999)
+
+	rec := performRequest(t, router, http.MethodGet, "/api/secret-mobile", nil, cAuth)
+	requireStatus(t, rec, http.StatusNotFound)
+}
+
+func TestGetMobileSecret_Unauthorized(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	router := setupTestRouter(t, db)
+
+	rec := performRequest(t, router, http.MethodGet, "/api/secret-mobile", nil, "")
+	requireStatus(t, rec, http.StatusUnauthorized)
 }

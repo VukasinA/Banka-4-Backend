@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/RAF-SI-2025/Banka-4-Backend/common/pkg/pb"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/banking-service/internal/client"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/banking-service/internal/dto"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/banking-service/internal/model"
@@ -19,8 +20,6 @@ type fakeMailer struct{}
 func (f *fakeMailer) Send(to, subject, body string) error {
 	return nil
 }
-
-// ── Fake Loan Request Repository ─────────────────────────────────────────────
 
 type fakeLoanRequestRepo struct {
 	request    *model.LoanRequest
@@ -58,8 +57,6 @@ func (f *fakeLoanRequestRepo) Update(_ context.Context, r *model.LoanRequest) er
 	f.updated = r
 	return nil
 }
-
-// ── Fake Loan Repository ─────────────────────────────────────────────────────
 
 type fakeLoanRepo struct {
 	loan                 *model.Loan
@@ -133,8 +130,6 @@ func (f *fakeLoanRepo) FindAll(_ context.Context, _ *dto.ListLoanRequestsQuery) 
 	return f.requests, f.total, f.findAllErr
 }
 
-// ── Fake Loan Type Repository ────────────────────────────────────────────────
-
 type fakeLoanTypeRepo struct {
 	loanType *model.LoanType
 	findErr  error
@@ -143,8 +138,6 @@ type fakeLoanTypeRepo struct {
 func (f *fakeLoanTypeRepo) FindByID(_ context.Context, _ uint) (*model.LoanType, error) {
 	return f.loanType, f.findErr
 }
-
-// ── Fake Account Repository for Loan Tests ───────────────────────────────────
 
 type fakeLoanAccountRepo struct {
 	account  *model.Account
@@ -191,8 +184,6 @@ func (r *fakeLoanAccountRepo) FindByAccountType(ctx context.Context, accountType
 	return nil, nil
 }
 
-// ── Fake Transaction Repository ──────────────────────────────────────────────
-
 type fakeLoanTransactionRepo struct {
 	transaction *model.Transaction
 	createErr   error
@@ -231,8 +222,6 @@ func (f *fakeLoanTransactionRepo) Update(_ context.Context, transaction *model.T
 	f.transaction = new(*transaction)
 	return nil
 }
-
-// ── Helper ────────────────────────────────────────────────────────────────────
 
 func newLoanService(
 	accountRepo repository.AccountRepository,
@@ -291,8 +280,6 @@ func loanTestAccount() *model.Account {
 	}
 }
 
-// ── CalculateMonthlyInstallment Tests ────────────────────────────────────────
-
 func TestCalculateMonthlyInstallment(t *testing.T) {
 	t.Parallel()
 
@@ -318,8 +305,6 @@ func TestCalculateMonthlyInstallment(t *testing.T) {
 		})
 	}
 }
-
-// ── SubmitLoanRequest Tests ──────────────────────────────────────────────────
 
 func TestSubmitLoanRequest(t *testing.T) {
 	t.Parallel()
@@ -477,8 +462,6 @@ func TestSubmitLoanRequest(t *testing.T) {
 	}
 }
 
-// ── ApproveLoanRequest Tests ─────────────────────────────────────────────────
-
 func TestApproveLoanRequest(t *testing.T) {
 	t.Parallel()
 
@@ -594,8 +577,6 @@ func TestApproveLoanRequest(t *testing.T) {
 	}
 }
 
-// ── RejectLoanRequest Tests ──────────────────────────────────────────────────
-
 func TestRejectLoanRequest(t *testing.T) {
 	t.Parallel()
 
@@ -662,8 +643,6 @@ func TestRejectLoanRequest(t *testing.T) {
 		})
 	}
 }
-
-// ── GetClientLoans Tests ────────────────────────────────────────────────────
 
 func TestGetClientLoans(t *testing.T) {
 	t.Parallel()
@@ -744,8 +723,6 @@ func TestGetClientLoans(t *testing.T) {
 		})
 	}
 }
-
-// ── GetLoanDetails Tests ────────────────────────────────────────────────────
 
 func TestGetLoanDetails(t *testing.T) {
 	t.Parallel()
@@ -831,8 +808,6 @@ func TestGetLoanDetails(t *testing.T) {
 	}
 }
 
-// ── GetLoanRequests Tests ───────────────────────────────────────────────────
-
 func TestGetLoanRequests(t *testing.T) {
 	t.Parallel()
 
@@ -913,8 +888,6 @@ func TestGetLoanRequests(t *testing.T) {
 	}
 }
 
-// ── AdjustVariableRates Tests ───────────────────────────────────────────────
-
 func TestAdjustVariableRates_NoVariableLoans(t *testing.T) {
 	t.Parallel()
 
@@ -964,8 +937,6 @@ func TestAdjustVariableRates_FindActiveVariableRateLoansError(t *testing.T) {
 	err := svc.AdjustVariableRates(context.Background())
 	require.Error(t, err)
 }
-
-// ── GetClientLoans additional Tests ────────────────────────────────────────
 
 func TestGetClientLoans_VerifiesResponseStructure(t *testing.T) {
 	t.Parallel()
@@ -1027,8 +998,6 @@ func TestGetClientLoans_AccountLookupError(t *testing.T) {
 	require.Nil(t, resp)
 }
 
-// ── GetLoanDetails additional Tests ────────────────────────────────────────
-
 func TestGetLoanDetails_VerifiesInstallmentMapping(t *testing.T) {
 	t.Parallel()
 
@@ -1072,8 +1041,6 @@ func TestGetLoanDetails_VerifiesInstallmentMapping(t *testing.T) {
 	require.Equal(t, "PENDING", resp.Installments[1].Status)
 	require.Equal(t, "RETRYING", resp.Installments[2].Status)
 }
-
-// ── GetLoanRequests additional Tests ───────────────────────────────────────
 
 func TestGetLoanRequests_ApprovedWithLoanInstallmentDate(t *testing.T) {
 	t.Parallel()
@@ -1125,4 +1092,378 @@ func TestGetLoanRequests_ApprovedWithLoanInstallmentDate(t *testing.T) {
 
 	// Pending request should not have installment due date
 	require.Nil(t, resp[1].InstallmentDueDate)
+}
+
+// fakeNilUserClient returns nil client (no error) to test the client==nil branches.
+type fakeNilUserClient struct{}
+
+func (f *fakeNilUserClient) GetClientByID(_ context.Context, _ uint) (*pb.GetClientByIdResponse, error) {
+	return nil, nil
+}
+
+func (f *fakeNilUserClient) GetEmployeeByID(_ context.Context, _ uint) (*pb.GetEmployeeByIdResponse, error) {
+	return nil, nil
+}
+
+// --- SubmitLoanRequest uncovered branches ---
+
+func TestSubmitLoanRequestLoanTypeRepoError(t *testing.T) {
+	t.Parallel()
+
+	svc := newLoanService(
+		&fakeLoanAccountRepo{account: loanTestAccount()},
+		&fakeLoanTypeRepo{findErr: fmt.Errorf("loan type db error")},
+		&fakeLoanRequestRepo{},
+		&fakeLoanRepo{},
+		&fakeUserClient{},
+		&fakeMailer{},
+	)
+
+	resp, err := svc.SubmitLoanRequest(context.Background(), &dto.CreateLoanRequest{
+		AccountNumber:   "4440001100000001",
+		LoanTypeID:      1,
+		Amount:          100000,
+		RepaymentPeriod: 24,
+	}, 1)
+
+	require.Nil(t, resp)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "loan type db error")
+}
+
+func TestSubmitLoanRequestUserClientError(t *testing.T) {
+	t.Parallel()
+
+	svc := newLoanService(
+		&fakeLoanAccountRepo{account: loanTestAccount()},
+		&fakeLoanTypeRepo{loanType: testLoanType()},
+		&fakeLoanRequestRepo{},
+		&fakeLoanRepo{},
+		&fakeUserClient{clientErr: fmt.Errorf("user service down")},
+		&fakeMailer{},
+	)
+
+	resp, err := svc.SubmitLoanRequest(context.Background(), &dto.CreateLoanRequest{
+		AccountNumber:   "4440001100000001",
+		LoanTypeID:      1,
+		Amount:          100000,
+		RepaymentPeriod: 24,
+	}, 1)
+
+	require.Nil(t, resp)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "user service down")
+}
+
+func TestSubmitLoanRequestClientNil(t *testing.T) {
+	t.Parallel()
+
+	svc := newLoanService(
+		&fakeLoanAccountRepo{account: loanTestAccount()},
+		&fakeLoanTypeRepo{loanType: testLoanType()},
+		&fakeLoanRequestRepo{},
+		&fakeLoanRepo{},
+		&fakeNilUserClient{},
+		&fakeMailer{},
+	)
+
+	resp, err := svc.SubmitLoanRequest(context.Background(), &dto.CreateLoanRequest{
+		AccountNumber:   "4440001100000001",
+		LoanTypeID:      1,
+		Amount:          100000,
+		RepaymentPeriod: 24,
+	}, 1)
+
+	require.Nil(t, resp)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "client not found in user service")
+}
+
+// --- ApproveLoanRequest uncovered branches ---
+
+func TestApproveLoanRequestClientAccountNotFound(t *testing.T) {
+	t.Parallel()
+
+	svc := newLoanService(
+		&fakeLoanAccountRepo{accounts: map[string]*model.Account{
+			// Bank account exists but client account does not.
+			BankAccounts[model.RSD]: {
+				AccountNumber:    BankAccounts[model.RSD],
+				AvailableBalance: 1_000_000,
+				Currency:         model.Currency{Code: model.RSD},
+			},
+		}},
+		nil,
+		&fakeLoanRequestRepo{
+			request: &model.LoanRequest{
+				ID:                 1,
+				Status:             model.LoanRequestPending,
+				AccountNumber:      "nonexistent-account",
+				Amount:             100000,
+				CalculatedRate:     5.5,
+				MonthlyInstallment: 4409.57,
+				RepaymentPeriod:    24,
+			},
+		},
+		&fakeLoanRepo{},
+		&fakeUserClient{},
+		&fakeMailer{},
+	)
+
+	err := svc.ApproveLoanRequest(context.Background(), 1)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "client account not found")
+}
+
+func TestApproveLoanRequestClientAccountRepoError(t *testing.T) {
+	t.Parallel()
+
+	svc := newLoanService(
+		&fakeLoanAccountRepo{findErr: fmt.Errorf("account db error")},
+		nil,
+		&fakeLoanRequestRepo{
+			request: &model.LoanRequest{
+				ID:                 1,
+				Status:             model.LoanRequestPending,
+				AccountNumber:      "client-account",
+				Amount:             100000,
+				CalculatedRate:     5.5,
+				MonthlyInstallment: 4409.57,
+				RepaymentPeriod:    24,
+			},
+		},
+		&fakeLoanRepo{},
+		&fakeUserClient{},
+		&fakeMailer{},
+	)
+
+	err := svc.ApproveLoanRequest(context.Background(), 1)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "account db error")
+}
+
+func TestApproveLoanRequestNoBankAccountForCurrency(t *testing.T) {
+	t.Parallel()
+
+	svc := newLoanService(
+		&fakeLoanAccountRepo{accounts: map[string]*model.Account{
+			"client-account": {
+				AccountNumber:    "client-account",
+				AvailableBalance: 1_000_000,
+				Currency:         model.Currency{Code: "XYZ"}, // Unknown currency.
+			},
+		}},
+		nil,
+		&fakeLoanRequestRepo{
+			request: &model.LoanRequest{
+				ID:                 1,
+				Status:             model.LoanRequestPending,
+				AccountNumber:      "client-account",
+				Amount:             100000,
+				CalculatedRate:     5.5,
+				MonthlyInstallment: 4409.57,
+				RepaymentPeriod:    24,
+			},
+		},
+		&fakeLoanRepo{},
+		&fakeUserClient{},
+		&fakeMailer{},
+	)
+
+	err := svc.ApproveLoanRequest(context.Background(), 1)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "no bank account for this currency")
+}
+
+func TestApproveLoanRequestInsufficientBankFunds(t *testing.T) {
+	t.Parallel()
+
+	svc := newLoanService(
+		&fakeLoanAccountRepo{accounts: map[string]*model.Account{
+			"client-account": {
+				AccountNumber:    "client-account",
+				AvailableBalance: 1_000_000,
+				DailyLimit:       10_000_000,
+				MonthlyLimit:     100_000_000,
+				Currency:         model.Currency{Code: model.RSD},
+			},
+			BankAccounts[model.RSD]: {
+				AccountNumber:    BankAccounts[model.RSD],
+				AvailableBalance: 50, // Insufficient.
+				DailyLimit:       10_000_000,
+				MonthlyLimit:     100_000_000,
+				Currency:         model.Currency{Code: model.RSD},
+			},
+		}},
+		nil,
+		&fakeLoanRequestRepo{
+			request: &model.LoanRequest{
+				ID:                 1,
+				Status:             model.LoanRequestPending,
+				AccountNumber:      "client-account",
+				Amount:             100000,
+				CalculatedRate:     5.5,
+				MonthlyInstallment: 4409.57,
+				RepaymentPeriod:    24,
+			},
+		},
+		&fakeLoanRepo{},
+		&fakeUserClient{},
+		&fakeMailer{},
+	)
+
+	err := svc.ApproveLoanRequest(context.Background(), 1)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "insufficient bank funds")
+}
+
+func TestApproveLoanRequestLoanCreateError(t *testing.T) {
+	t.Parallel()
+
+	svc := newLoanService(
+		nil, nil,
+		&fakeLoanRequestRepo{
+			request: &model.LoanRequest{
+				ID:                 1,
+				Status:             model.LoanRequestPending,
+				AccountNumber:      "client-account",
+				Amount:             100000,
+				CalculatedRate:     5.5,
+				MonthlyInstallment: 4409.57,
+				RepaymentPeriod:    24,
+			},
+		},
+		&fakeLoanRepo{loanErr: fmt.Errorf("loan create failed")},
+		&fakeUserClient{},
+		&fakeMailer{},
+	)
+
+	err := svc.ApproveLoanRequest(context.Background(), 1)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "loan create failed")
+}
+
+func TestApproveLoanRequestInstallmentCreateError(t *testing.T) {
+	t.Parallel()
+
+	svc := newLoanService(
+		nil, nil,
+		&fakeLoanRequestRepo{
+			request: &model.LoanRequest{
+				ID:                 1,
+				Status:             model.LoanRequestPending,
+				AccountNumber:      "client-account",
+				Amount:             100000,
+				CalculatedRate:     5.5,
+				MonthlyInstallment: 4409.57,
+				RepaymentPeriod:    24,
+			},
+		},
+		&fakeLoanRepo{instErr: fmt.Errorf("installment create failed")},
+		&fakeUserClient{},
+		&fakeMailer{},
+	)
+
+	err := svc.ApproveLoanRequest(context.Background(), 1)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "installment create failed")
+}
+
+func TestApproveLoanRequestClientNilAfterTx(t *testing.T) {
+	t.Parallel()
+
+	svc := newLoanService(
+		nil, nil,
+		&fakeLoanRequestRepo{
+			request: &model.LoanRequest{
+				ID:                 1,
+				Status:             model.LoanRequestPending,
+				AccountNumber:      "client-account",
+				Amount:             100000,
+				CalculatedRate:     5.5,
+				MonthlyInstallment: 4409.57,
+				RepaymentPeriod:    24,
+			},
+		},
+		&fakeLoanRepo{},
+		&fakeNilUserClient{},
+		&fakeMailer{},
+	)
+
+	err := svc.ApproveLoanRequest(context.Background(), 1)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "client not found in user service")
+}
+
+// --- RejectLoanRequest uncovered branches ---
+
+func TestRejectLoanRequestFindError(t *testing.T) {
+	t.Parallel()
+
+	svc := newLoanService(
+		nil, nil,
+		&fakeLoanRequestRepo{findErr: fmt.Errorf("db error")},
+		&fakeLoanRepo{},
+		&fakeUserClient{},
+		&fakeMailer{},
+	)
+
+	err := svc.RejectLoanRequest(context.Background(), 1)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "db error")
+}
+
+func TestRejectLoanRequestUserClientError(t *testing.T) {
+	t.Parallel()
+
+	svc := newLoanService(
+		nil, nil,
+		&fakeLoanRequestRepo{
+			request: &model.LoanRequest{ID: 1, Status: model.LoanRequestPending},
+		},
+		&fakeLoanRepo{},
+		&fakeUserClient{clientErr: fmt.Errorf("user service down")},
+		&fakeMailer{},
+	)
+
+	err := svc.RejectLoanRequest(context.Background(), 1)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "user service down")
+}
+
+func TestRejectLoanRequestClientNil(t *testing.T) {
+	t.Parallel()
+
+	svc := newLoanService(
+		nil, nil,
+		&fakeLoanRequestRepo{
+			request: &model.LoanRequest{ID: 1, Status: model.LoanRequestPending},
+		},
+		&fakeLoanRepo{},
+		&fakeNilUserClient{},
+		&fakeMailer{},
+	)
+
+	err := svc.RejectLoanRequest(context.Background(), 1)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "client not found in user service")
+}
+
+func TestRejectLoanRequestUpdateError(t *testing.T) {
+	t.Parallel()
+
+	svc := newLoanService(
+		nil, nil,
+		&fakeLoanRequestRepo{
+			request:   &model.LoanRequest{ID: 1, Status: model.LoanRequestPending},
+			updateErr: fmt.Errorf("update failed"),
+		},
+		&fakeLoanRepo{},
+		&fakeUserClient{},
+		&fakeMailer{},
+	)
+
+	err := svc.RejectLoanRequest(context.Background(), 1)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "update failed")
 }

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/user-service/internal/dto"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/user-service/internal/model"
@@ -202,6 +203,139 @@ func TestUpdateActuarySettings(t *testing.T) {
 			}
 
 			require.Equal(t, tt.expectTransferCalled, tt.tradingClient.transferCalled)
+		})
+	}
+}
+
+func TestIncrementUsedLimit(t *testing.T) {
+	t.Parallel()
+
+	agent := activeAgent()
+
+	tests := []struct {
+		name        string
+		empRepo     *fakeEmployeeRepo
+		actuaryRepo *fakeActuaryRepo
+		employeeID  uint
+		amount      float64
+		expectErr   bool
+		errMsg      string
+		expectUsed  float64
+	}{
+		{
+			name: "successful increment",
+			empRepo: &fakeEmployeeRepo{
+				byIDs: map[uint]*model.Employee{agent.EmployeeID: agent},
+			},
+			actuaryRepo: &fakeActuaryRepo{
+				byEmployeeID: map[uint]*model.ActuaryInfo{agent.EmployeeID: agent.ActuaryInfo},
+			},
+			employeeID: agent.EmployeeID,
+			amount:     500.0,
+			expectUsed: agent.ActuaryInfo.UsedLimit + 500.0,
+		},
+		{
+			name:        "amount zero",
+			empRepo:     &fakeEmployeeRepo{},
+			actuaryRepo: &fakeActuaryRepo{},
+			employeeID:  agent.EmployeeID,
+			amount:      0,
+			expectErr:   true,
+			errMsg:      "amount must be positive",
+		},
+		{
+			name:        "amount negative",
+			empRepo:     &fakeEmployeeRepo{},
+			actuaryRepo: &fakeActuaryRepo{},
+			employeeID:  agent.EmployeeID,
+			amount:      -10.0,
+			expectErr:   true,
+			errMsg:      "amount must be positive",
+		},
+		{
+			name:        "employee not found",
+			empRepo:     &fakeEmployeeRepo{byIDs: map[uint]*model.Employee{}},
+			actuaryRepo: &fakeActuaryRepo{},
+			employeeID:  999,
+			amount:      100.0,
+			expectErr:   true,
+			errMsg:      "employee not found",
+		},
+		{
+			name: "employee find error",
+			empRepo: &fakeEmployeeRepo{
+				findErr: fmt.Errorf("db error"),
+			},
+			actuaryRepo: &fakeActuaryRepo{},
+			employeeID:  agent.EmployeeID,
+			amount:      100.0,
+			expectErr:   true,
+		},
+		{
+			name: "employee is not an agent",
+			empRepo: &fakeEmployeeRepo{
+				byIDs: map[uint]*model.Employee{activeEmployee().EmployeeID: activeEmployee()},
+			},
+			actuaryRepo: &fakeActuaryRepo{},
+			employeeID:  activeEmployee().EmployeeID,
+			amount:      100.0,
+			expectErr:   true,
+			errMsg:      "only agents have used limits",
+		},
+		{
+			name: "actuary info not found - nil result",
+			empRepo: &fakeEmployeeRepo{
+				byIDs: map[uint]*model.Employee{agent.EmployeeID: agent},
+			},
+			actuaryRepo: &fakeActuaryRepo{},
+			employeeID:  agent.EmployeeID,
+			amount:      100.0,
+			expectErr:   true,
+			errMsg:      "actuary info not found",
+		},
+		{
+			name: "actuary repo record not found error",
+			empRepo: &fakeEmployeeRepo{
+				byIDs: map[uint]*model.Employee{agent.EmployeeID: agent},
+			},
+			actuaryRepo: &fakeActuaryRepo{
+				incrementErr: gorm.ErrRecordNotFound,
+			},
+			employeeID: agent.EmployeeID,
+			amount:     100.0,
+			expectErr:  true,
+			errMsg:     "actuary info not found",
+		},
+		{
+			name: "actuary repo internal error",
+			empRepo: &fakeEmployeeRepo{
+				byIDs: map[uint]*model.Employee{agent.EmployeeID: agent},
+			},
+			actuaryRepo: &fakeActuaryRepo{
+				incrementErr: fmt.Errorf("db error"),
+			},
+			employeeID: agent.EmployeeID,
+			amount:     100.0,
+			expectErr:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			service := NewActuaryService(tt.actuaryRepo, tt.empRepo, &fakeTradingClient{})
+
+			used, err := service.IncrementUsedLimit(context.Background(), tt.employeeID, tt.amount)
+
+			if tt.expectErr {
+				require.Error(t, err)
+				if tt.errMsg != "" {
+					require.Contains(t, err.Error(), tt.errMsg)
+				}
+				require.Zero(t, used)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.expectUsed, used)
+			}
 		})
 	}
 }

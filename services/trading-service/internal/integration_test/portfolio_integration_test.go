@@ -96,6 +96,78 @@ func TestGetActuaryPortfolio_InvalidID(t *testing.T) {
 	require.NotEqual(t, http.StatusOK, rec.Code)
 }
 
+func TestGetClientPortfolioProfit_Empty(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router, _ := setupTestRouter(t, db)
+
+	auth := authHeaderForClient(t, 50, 1)
+
+	rec := performRequest(t, router, http.MethodGet, "/api/client/1/assets/profit", nil, auth)
+	requireStatus(t, rec, http.StatusOK)
+
+	resp := decodeResponse[map[string]any](t, rec)
+	require.Equal(t, 0.0, resp["total_profit_rsd"])
+}
+
+func TestGetClientPortfolioProfit_InvalidID(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router, _ := setupTestRouter(t, db)
+
+	auth := authHeaderForClient(t, 50, 1)
+
+	rec := performRequest(t, router, http.MethodGet, "/api/client/abc/assets/profit", nil, auth)
+	require.NotEqual(t, http.StatusOK, rec.Code)
+}
+
+func TestGetActuaryPortfolioProfit_Empty(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router, _ := setupTestRouter(t, db)
+
+	auth := authHeaderForSupervisor(t)
+
+	rec := performRequest(t, router, http.MethodGet, "/api/actuary/10/assets/profit", nil, auth)
+	requireStatus(t, rec, http.StatusOK)
+
+	resp := decodeResponse[map[string]any](t, rec)
+	require.Equal(t, 0.0, resp["total_profit_rsd"])
+}
+
+func TestGetActuaryPortfolioProfit_InvalidID(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router, _ := setupTestRouter(t, db)
+
+	auth := authHeaderForSupervisor(t)
+
+	rec := performRequest(t, router, http.MethodGet, "/api/actuary/abc/assets/profit", nil, auth)
+	require.NotEqual(t, http.StatusOK, rec.Code)
+}
+
+func TestGetAllActuaryProfits_Empty(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router, _ := setupTestRouter(t, db)
+
+	auth := authHeaderForSupervisor(t)
+
+	rec := performRequest(t, router, http.MethodGet, "/api/profit/actuaries?page=1&page_size=10", nil, auth)
+	requireStatus(t, rec, http.StatusOK)
+}
+
+func TestGetAllActuaryProfits_InvalidPage(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router, _ := setupTestRouter(t, db)
+
+	auth := authHeaderForSupervisor(t)
+
+	rec := performRequest(t, router, http.MethodGet, "/api/profit/actuaries?page=abc", nil, auth)
+	require.NotEqual(t, http.StatusOK, rec.Code)
+}
+
 func TestExerciseOption_Success(t *testing.T) {
 	t.Parallel()
 	db := setupTestDB(t)
