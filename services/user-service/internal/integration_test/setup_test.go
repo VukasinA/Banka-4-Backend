@@ -144,6 +144,9 @@ func setupTestRouter(t *testing.T, db *gorm.DB) *gin.Engine {
 
 	auditRepo := audit.NewRepository(db)
 
+	auditLogSvc := service.NewAuditLogService(auditRepo)
+	auditLogHandler := handler.NewAuditLogHandler(auditLogSvc)
+
 	empSvc := service.NewEmployeeService(
 		empRepo,
 		identityRepo,
@@ -185,6 +188,7 @@ func setupTestRouter(t *testing.T, db *gorm.DB) *gin.Engine {
 		empHandler,
 		actuaryHandler,
 		clientHandler,
+		auditLogHandler,
 		empRepo,
 		auth.TokenVerifier(commonjwt.NewJWTVerifier(cfg.JWTSecret)),
 		dbpermission.NewDBPermissionProvider(db),
