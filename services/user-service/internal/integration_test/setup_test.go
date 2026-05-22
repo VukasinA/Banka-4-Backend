@@ -20,6 +20,7 @@ import (
 	commonjwt "github.com/RAF-SI-2025/Banka-4-Backend/common/pkg/jwt"
 	"github.com/RAF-SI-2025/Banka-4-Backend/common/pkg/logging"
 	commonpermission "github.com/RAF-SI-2025/Banka-4-Backend/common/pkg/permission"
+	"github.com/RAF-SI-2025/Banka-4-Backend/services/user-service/internal/audit"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/user-service/internal/config"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/user-service/internal/handler"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/user-service/internal/model"
@@ -140,6 +141,8 @@ func setupTestRouter(t *testing.T, db *gorm.DB) *gin.Engine {
 		txManager,
 	)
 
+	auditRepo := audit.NewRepository(db)
+
 	empSvc := service.NewEmployeeService(
 		empRepo,
 		identityRepo,
@@ -148,11 +151,13 @@ func setupTestRouter(t *testing.T, db *gorm.DB) *gin.Engine {
 		mailer,
 		cfg,
 		txManager,
+		auditRepo,
 	)
 	actuarySvc := service.NewActuaryService(
 		actuaryRepo,
 		empRepo,
 		nil,
+		auditRepo,
 	)
 
 	clientSvc := service.NewClientService(
