@@ -194,20 +194,146 @@ const docTemplate = `{
                 }
             },
             "put": {
-                "description": "§3.3 — STUB. Implementation pending.",
+                "description": "§3.3 — peer bank posts a counter-offer against an ongoing\nnegotiation owned by us. Buyer/seller and ticker are\nimmutable; only negotiable parameters may change. The\nsame party may not counter twice in a row (turn rule).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
                 "tags": [
                     "interbank-otc"
                 ],
-                "summary": "Post counter-offer (peer-initiated)",
-                "responses": {}
+                "summary": "Post counter-offer",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Peer bank API key",
+                        "name": "X-Api-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Routing number (this bank)",
+                        "name": "rn",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Negotiation id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Updated offer",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.OtcOffer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "409": {
+                        "description": "Turn violation or negotiation closed",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    }
+                }
             },
             "delete": {
-                "description": "§3.5 — STUB. Implementation pending.",
+                "description": "§3.5 — either party may withdraw from a negotiation. The\noperation is idempotent: closing an already-closed\nnegotiation returns 204 without changing state.",
+                "produces": [
+                    "application/json"
+                ],
                 "tags": [
                     "interbank-otc"
                 ],
                 "summary": "Close OTC negotiation",
-                "responses": {}
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Peer bank API key",
+                        "name": "X-Api-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Routing number (this bank)",
+                        "name": "rn",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Negotiation id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    }
+                }
             }
         },
         "/interbank/negotiations/{rn}/{id}/accept": {

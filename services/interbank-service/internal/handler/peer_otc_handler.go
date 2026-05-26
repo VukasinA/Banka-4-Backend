@@ -95,21 +95,95 @@ func (h *PeerOtcHandler) GetNegotiation(c *gin.Context) {
 }
 
 // UpdateNegotiation godoc
-// @Summary Post counter-offer (peer-initiated)
-// @Description §3.3 — STUB. Implementation pending.
+// @Summary Post counter-offer
+// @Description §3.3 — peer bank posts a counter-offer against an ongoing
+// @Description negotiation owned by us. Buyer/seller and ticker are
+// @Description immutable; only negotiable parameters may change. The
+// @Description same party may not counter twice in a row (turn rule).
 // @Tags interbank-otc
+// @Accept json
+// @Produce json
+// @Param X-Api-Key header string true "Peer bank API key"
+// @Param rn path int true "Routing number (this bank)"
+// @Param id path string true "Negotiation id"
+// @Param request body dto.OtcOffer true "Updated offer"
+// @Success 204
+// @Failure 400 {object} errors.AppError
+// @Failure 401 {object} errors.AppError
+// @Failure 403 {object} errors.AppError
+// @Failure 404 {object} errors.AppError
+// @Failure 409 {object} errors.AppError "Turn violation or negotiation closed"
 // @Router /interbank/negotiations/{rn}/{id} [put]
 func (h *PeerOtcHandler) UpdateNegotiation(c *gin.Context) {
-	_ = c.Error(errors.NewAppError(http.StatusNotImplemented, "counter-offer not implemented yet", nil))
+	senderRouting, ok := senderRoutingFromContext(c)
+	if !ok {
+		return
+	}
+
+	rn, ok := parseRoutingNumber(c)
+	if !ok {
+		return
+	}
+
+	id := c.Param("id")
+	if id == "" {
+		_ = c.Error(errors.BadRequestErr("id is required"))
+		return
+	}
+
+	var req dto.OtcOffer
+	if err := c.ShouldBindJSON(&req); err != nil {
+		_ = c.Error(errors.BadRequestErr(err.Error()))
+		return
+	}
+
+	if err := h.service.UpdateCounter(c.Request.Context(), senderRouting, rn, id, req); err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.Status(http.StatusNoContent)
 }
 
 // DeleteNegotiation godoc
 // @Summary Close OTC negotiation
-// @Description §3.5 — STUB. Implementation pending.
+// @Description §3.5 — either party may withdraw from a negotiation. The
+// @Description operation is idempotent: closing an already-closed
+// @Description negotiation returns 204 without changing state.
 // @Tags interbank-otc
+// @Produce json
+// @Param X-Api-Key header string true "Peer bank API key"
+// @Param rn path int true "Routing number (this bank)"
+// @Param id path string true "Negotiation id"
+// @Success 204
+// @Failure 400 {object} errors.AppError
+// @Failure 401 {object} errors.AppError
+// @Failure 403 {object} errors.AppError
+// @Failure 404 {object} errors.AppError
 // @Router /interbank/negotiations/{rn}/{id} [delete]
 func (h *PeerOtcHandler) DeleteNegotiation(c *gin.Context) {
-	_ = c.Error(errors.NewAppError(http.StatusNotImplemented, "close-negotiation not implemented yet", nil))
+	senderRouting, ok := senderRoutingFromContext(c)
+	if !ok {
+		return
+	}
+
+	rn, ok := parseRoutingNumber(c)
+	if !ok {
+		return
+	}
+
+	id := c.Param("id")
+	if id == "" {
+		_ = c.Error(errors.BadRequestErr("id is required"))
+		return
+	}
+
+	if err := h.service.Close(c.Request.Context(), senderRouting, rn, id); err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.Status(http.StatusNoContent)
 }
 
 // AcceptNegotiation godoc

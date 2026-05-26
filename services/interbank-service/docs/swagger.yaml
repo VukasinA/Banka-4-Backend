@@ -309,8 +309,47 @@ paths:
       - interbank-otc
   /interbank/negotiations/{rn}/{id}:
     delete:
-      description: §3.5 — STUB. Implementation pending.
-      responses: {}
+      description: |-
+        §3.5 — either party may withdraw from a negotiation. The
+        operation is idempotent: closing an already-closed
+        negotiation returns 204 without changing state.
+      parameters:
+      - description: Peer bank API key
+        in: header
+        name: X-Api-Key
+        required: true
+        type: string
+      - description: Routing number (this bank)
+        in: path
+        name: rn
+        required: true
+        type: integer
+      - description: Negotiation id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errors.AppError'
       summary: Close OTC negotiation
       tags:
       - interbank-otc
@@ -358,9 +397,61 @@ paths:
       tags:
       - interbank-otc
     put:
-      description: §3.3 — STUB. Implementation pending.
-      responses: {}
-      summary: Post counter-offer (peer-initiated)
+      consumes:
+      - application/json
+      description: |-
+        §3.3 — peer bank posts a counter-offer against an ongoing
+        negotiation owned by us. Buyer/seller and ticker are
+        immutable; only negotiable parameters may change. The
+        same party may not counter twice in a row (turn rule).
+      parameters:
+      - description: Peer bank API key
+        in: header
+        name: X-Api-Key
+        required: true
+        type: string
+      - description: Routing number (this bank)
+        in: path
+        name: rn
+        required: true
+        type: integer
+      - description: Negotiation id
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated offer
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.OtcOffer'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "409":
+          description: Turn violation or negotiation closed
+          schema:
+            $ref: '#/definitions/errors.AppError'
+      summary: Post counter-offer
       tags:
       - interbank-otc
   /interbank/negotiations/{rn}/{id}/accept:

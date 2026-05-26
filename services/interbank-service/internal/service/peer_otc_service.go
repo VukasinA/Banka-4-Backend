@@ -95,6 +95,106 @@ func (s *PeerOtcService) GetByID(ctx context.Context, routingNumber int, id stri
 	return toNegotiationDTO(n, s.peers.OurRoutingNumber()), nil
 }
 
+// UpdateCounter handles §3.3 PUT /interbank/negotiations/:rn/:id — a peer
+// bank posts a counter-offer against an ongoing negotiation owned by us.
+//
+// Per spec §3.3: a 409 is returned when the same party tries to counter
+// twice in a row (turn violation) or when the negotiation is closed.
+// Buyer/seller identities and ticker are immutable for the lifetime of
+// the negotiation; only the negotiable parameters may change.
+func (s *PeerOtcService) UpdateCounter(ctx context.Context, senderRouting, routingNumber int, id string, offer dto.OtcOffer) error {
+	if routingNumber != s.peers.OurRoutingNumber() {
+		return errors.BadRequestErr("routingNumber does not match this bank")
+	}
+	if err := s.validateOffer(offer); err != nil {
+		return err
+	}
+	if offer.LastModifiedBy.RoutingNumber != senderRouting {
+		return errors.UnauthorizedErr("lastModifiedBy.routingNumber does not match sender")
+	}
+
+	n, err := s.negotiations.FindByID(ctx, id)
+	if err != nil {
+		return errors.InternalErr(err)
+	}
+	if n == nil {
+		return errors.NotFoundErr("negotiation not found")
+	}
+
+	if senderRouting != n.BuyerRoutingNumber && senderRouting != n.SellerRoutingNumber {
+		return errors.ForbiddenErr("sender is not a party to this negotiation")
+	}
+	if n.Status != model.PeerNegotiationOngoing {
+		return errors.ConflictErr("negotiation is not ongoing")
+	}
+
+	// Turn enforcement (§3.3): the same party cannot counter twice in a row.
+	if n.LastModifiedByRouting == offer.LastModifiedBy.RoutingNumber &&
+		n.LastModifiedByID == offer.LastModifiedBy.ID {
+		return errors.ConflictErr("turn violation: same party cannot counter twice in a row")
+	}
+
+	// Immutable fields.
+	if n.BuyerRoutingNumber != offer.BuyerID.RoutingNumber || n.BuyerID != offer.BuyerID.ID {
+		return errors.BadRequestErr("buyerId cannot change during negotiation")
+	}
+	if n.SellerRoutingNumber != offer.SellerID.RoutingNumber || n.SellerID != offer.SellerID.ID {
+		return errors.BadRequestErr("sellerId cannot change during negotiation")
+	}
+	if n.Ticker != offer.Ticker {
+		return errors.BadRequestErr("ticker cannot change during negotiation")
+	}
+
+	// Apply counter-offer.
+	n.Amount = offer.Amount
+	n.PricePerStock = offer.PricePerStock
+	n.PriceCurrency = offer.PriceCurrency
+	n.Premium = offer.Premium
+	n.PremiumCurrency = offer.PremiumCurrency
+	n.SettlementDate = offer.SettlementDate
+	n.LastModifiedByRouting = offer.LastModifiedBy.RoutingNumber
+	n.LastModifiedByID = offer.LastModifiedBy.ID
+
+	if err := s.negotiations.Update(ctx, n); err != nil {
+		return errors.InternalErr(err)
+	}
+
+	return nil
+}
+
+// Close handles §3.5 DELETE /interbank/negotiations/:rn/:id — either party
+// may withdraw from the negotiation. Operation is idempotent: closing an
+// already-closed negotiation returns success without changing state.
+func (s *PeerOtcService) Close(ctx context.Context, senderRouting, routingNumber int, id string) error {
+	if routingNumber != s.peers.OurRoutingNumber() {
+		return errors.BadRequestErr("routingNumber does not match this bank")
+	}
+
+	n, err := s.negotiations.FindByID(ctx, id)
+	if err != nil {
+		return errors.InternalErr(err)
+	}
+	if n == nil {
+		return errors.NotFoundErr("negotiation not found")
+	}
+
+	if senderRouting != n.BuyerRoutingNumber && senderRouting != n.SellerRoutingNumber {
+		return errors.ForbiddenErr("sender is not a party to this negotiation")
+	}
+
+	// Idempotent: leave already-closed negotiations alone.
+	if n.Status != model.PeerNegotiationOngoing {
+		return nil
+	}
+
+	n.Status = model.PeerNegotiationCancelled
+	if err := s.negotiations.Update(ctx, n); err != nil {
+		return errors.InternalErr(err)
+	}
+
+	return nil
+}
+
 func (s *PeerOtcService) validateOffer(o dto.OtcOffer) error {
 	if strings.TrimSpace(o.Ticker) == "" {
 		return errors.BadRequestErr("ticker is required")
