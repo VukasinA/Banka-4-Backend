@@ -3243,6 +3243,15 @@
                 "account_balance": {
                     "type": "number"
                 },
+                "annual_return": {
+                    "type": "number"
+                },
+                "average_market_history": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.FundPerformanceEntry"
+                    }
+                },
                 "description": {
                     "type": "string"
                 },
@@ -3261,6 +3270,9 @@
                 "manager": {
                     "type": "string"
                 },
+                "max_drawdown": {
+                    "type": "number"
+                },
                 "min_investment": {
                     "type": "number"
                 },
@@ -3274,6 +3286,12 @@
                     }
                 },
                 "profit": {
+                    "type": "number"
+                },
+                "reward_to_variability": {
+                    "type": "number"
+                },
+                "volatility": {
                     "type": "number"
                 }
             }
@@ -3344,6 +3362,9 @@
                 "account_number": {
                     "type": "string"
                 },
+                "annual_return": {
+                    "type": "number"
+                },
                 "created_at": {
                     "type": "string"
                 },
@@ -3362,6 +3383,9 @@
                 "manager_id": {
                     "type": "integer"
                 },
+                "max_drawdown": {
+                    "type": "number"
+                },
                 "minimum_contribution": {
                     "type": "number"
                 },
@@ -3369,6 +3393,12 @@
                     "type": "string"
                 },
                 "profit": {
+                    "type": "number"
+                },
+                "reward_to_variability": {
+                    "type": "number"
+                },
+                "volatility": {
                     "type": "number"
                 }
             }
