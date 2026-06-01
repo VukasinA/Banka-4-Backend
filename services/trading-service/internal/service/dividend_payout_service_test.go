@@ -16,14 +16,12 @@ import (
 // ── Fake DividendPayout Repository ────────────────────────────────
 
 type fakeDividendRepo struct {
-	saved          []*model.DividendPayout
-	saveErr        error
-	allPayouts     []model.DividendPayout
-	findAllErr     error
-	userPayouts    []model.DividendPayout
-	findByUserErr  error
-	stockPayouts   []model.DividendPayout
-	findByStockErr error
+	saved              []*model.DividendPayout
+	saveErr            error
+	allPayouts         []model.DividendPayout
+	findAllErr         error
+	ownershipPayouts   []model.DividendPayout
+	findByOwnershipErr error
 }
 
 func (f *fakeDividendRepo) Save(_ context.Context, p *model.DividendPayout) error {
@@ -38,12 +36,8 @@ func (f *fakeDividendRepo) FindAll(_ context.Context) ([]model.DividendPayout, e
 	return f.allPayouts, f.findAllErr
 }
 
-func (f *fakeDividendRepo) FindAllByUserID(_ context.Context, _ uint, _ model.OwnerType) ([]model.DividendPayout, error) {
-	return f.userPayouts, f.findByUserErr
-}
-
-func (f *fakeDividendRepo) FindAllByStockID(_ context.Context, _ uint) ([]model.DividendPayout, error) {
-	return f.stockPayouts, f.findByStockErr
+func (f *fakeDividendRepo) FindAllByAssetOwnershipID(_ context.Context, _ uint) ([]model.DividendPayout, error) {
+	return f.ownershipPayouts, f.findByOwnershipErr
 }
 
 // ── Fake AssetOwnership Repository ────────────────────────────────
@@ -226,7 +220,7 @@ func TestProcessDividends_StockRepoError(t *testing.T) {
 }
 
 func TestProcessDividends_PaysSingleClientOwner(t *testing.T) {
-	stock := makeDividendStock(0.04, 100.0) // gross = 50 * 100 * 0.01 = 50
+	stock := makeDividendStock(0.04, 100.0)
 	ownership := makeDividendOwnership(1, model.OwnerTypeClient, 50)
 
 	stockRepo := &fakeDividendStockRepo{stocks: []model.Stock{stock}}
@@ -247,8 +241,7 @@ func TestProcessDividends_PaysSingleClientOwner(t *testing.T) {
 	require.Len(t, dividendRepo.saved, 1)
 
 	payout := dividendRepo.saved[0]
-	require.Equal(t, uint(1), payout.UserID)
-	require.Equal(t, model.OwnerTypeClient, payout.OwnerType)
+	require.Equal(t, ownership.AssetOwnershipID, payout.AssetOwnershipID)
 	require.InDelta(t, 50.0, payout.GrossAmount, 0.001)
 	require.InDelta(t, 50.0*0.15, payout.TaxAmount, 0.001)
 	require.InDelta(t, 50.0*0.85, payout.NetAmount, 0.001)
@@ -305,6 +298,20 @@ func TestProcessDividends_DividendFormula(t *testing.T) {
 
 func TestProcessDividends_SkipsZeroAmountOwnership(t *testing.T) {
 	stock := makeDividendStock(0.04, 100.0)
+	ownership := makeDividendOwnership(4, model.OwnerTypeClient, 0)
+	stockRepo := &fakeDividendStockRepo{stocks: []model.Stock{stock}}
+	ownershipRepo := &fakeDividendOwnershipRepo{ownerships: []model.AssetOwnership{ownership}}
+	dividendRepo := &fakeDividendRepo{}
+
+	svc := newTestDividendService(dividendRepo, ownershipRepo, stockRepo, &fakeBankingClient{})
+	err := svc.ProcessDividends(context.Background())
+
+	require.NoError(t, err)
+	require.Empty(t, dividendRepo.saved) // gross=0, ne ulazi u payOwner
+}
+
+func TestProcessDividends_NoAccountSkipsPayout(t *testing.T) {
+	stock := makeDividendStock(0.04, 100.0)
 	ownership := makeDividendOwnership(4, model.OwnerTypeClient, 50)
 	stockRepo := &fakeDividendStockRepo{stocks: []model.Stock{stock}}
 	ownershipRepo := &fakeDividendOwnershipRepo{ownerships: []model.AssetOwnership{ownership}}
@@ -341,7 +348,6 @@ func TestProcessDividends_PaymentFailureDoesNotStopOtherOwners(t *testing.T) {
 	svc := newTestDividendService(dividendRepo, ownershipRepo, stockRepo, banking)
 	err := svc.ProcessDividends(context.Background())
 
-	// ProcessDividends itself should not fail — individual errors are logged
 	require.NoError(t, err)
 }
 
@@ -360,17 +366,16 @@ func TestProcessDividends_SaveFailureIsNonFatal(t *testing.T) {
 	}
 
 	svc := newTestDividendService(dividendRepo, ownershipRepo, stockRepo, banking)
-	// Payment went through; save failed — should not return error
 	err := svc.ProcessDividends(context.Background())
 	require.NoError(t, err)
 }
 
-// ── GetAllPayouts / GetPayoutsForUser Tests ────────────────────────
+// ── GetAllPayouts / GetPayoutsForAssetOwnership Tests ──────────────
 
 func TestGetAllPayouts_Success(t *testing.T) {
 	payouts := []model.DividendPayout{
-		{DividendPayoutID: 1, UserID: 1, PaymentDate: time.Now()},
-		{DividendPayoutID: 2, UserID: 2, PaymentDate: time.Now()},
+		{DividendPayoutID: 1, AssetOwnershipID: 1, PaymentDate: time.Now()},
+		{DividendPayoutID: 2, AssetOwnershipID: 2, PaymentDate: time.Now()},
 	}
 	dividendRepo := &fakeDividendRepo{allPayouts: payouts}
 	svc := newTestDividendService(dividendRepo, &fakeDividendOwnershipRepo{}, &fakeDividendStockRepo{}, &fakeBankingClient{})
@@ -389,24 +394,24 @@ func TestGetAllPayouts_RepoError(t *testing.T) {
 	require.Nil(t, result)
 }
 
-func TestGetPayoutsForUser_Client(t *testing.T) {
+func TestGetPayoutsForAssetOwnership_Success(t *testing.T) {
 	payouts := []model.DividendPayout{
-		{DividendPayoutID: 1, UserID: 1, OwnerType: model.OwnerTypeClient},
+		{DividendPayoutID: 1, AssetOwnershipID: 42},
 	}
-	dividendRepo := &fakeDividendRepo{userPayouts: payouts}
+	dividendRepo := &fakeDividendRepo{ownershipPayouts: payouts}
 	svc := newTestDividendService(dividendRepo, &fakeDividendOwnershipRepo{}, &fakeDividendStockRepo{}, &fakeBankingClient{})
 
-	result, err := svc.GetPayoutsForUser(context.Background(), 1, model.OwnerTypeClient)
+	result, err := svc.GetPayoutsForAssetOwnership(context.Background(), 42)
 	require.NoError(t, err)
 	require.Len(t, result, 1)
-	require.Equal(t, model.OwnerTypeClient, result[0].OwnerType)
+	require.Equal(t, uint(42), result[0].AssetOwnershipID)
 }
 
-func TestGetPayoutsForUser_RepoError(t *testing.T) {
-	dividendRepo := &fakeDividendRepo{findByUserErr: errors.New("db error")}
+func TestGetPayoutsForAssetOwnership_RepoError(t *testing.T) {
+	dividendRepo := &fakeDividendRepo{findByOwnershipErr: errors.New("db error")}
 	svc := newTestDividendService(dividendRepo, &fakeDividendOwnershipRepo{}, &fakeDividendStockRepo{}, &fakeBankingClient{})
 
-	result, err := svc.GetPayoutsForUser(context.Background(), 1, model.OwnerTypeClient)
+	result, err := svc.GetPayoutsForAssetOwnership(context.Background(), 42)
 	require.Error(t, err)
 	require.Nil(t, result)
 }

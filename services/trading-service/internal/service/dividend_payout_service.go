@@ -102,7 +102,6 @@ func (s *DividendPayoutService) processStockDividend(ctx context.Context, stock 
 	return nil
 }
 
-// payOwner calculates and executes the dividend payment for a single owner.
 func (s *DividendPayoutService) payOwner(
 	ctx context.Context,
 	stock model.Stock,
@@ -111,23 +110,38 @@ func (s *DividendPayoutService) payOwner(
 	currencyCode string,
 	paymentDate time.Time,
 ) error {
-	// Formula: Quantity × Price × (DividendYield / 4)
 	gross := ownership.Amount * price * (stock.DividendYield / 4.0)
 	if gross <= 0 {
 		return nil
 	}
 
-	// Determine target account
+	isBankOwned := ownership.OwnerType == model.OwnerTypeActuary || ownership.OwnerType == model.OwnerTypeFund
+
+	// Aktuari i fondovi: dividenda ide u profit banke, nema eksternog transfera
+	if isBankOwned {
+		payout := &model.DividendPayout{
+			AssetOwnershipID: ownership.AssetOwnershipID,
+			Quantity:         ownership.Amount,
+			PricePerShare:    price,
+			GrossAmount:      gross,
+			TaxAmount:        0,
+			NetAmount:        gross,
+			CurrencyCode:     currencyCode,
+			AccountNumber:    s.cfg.DividendAccountNumber, // bankini račun
+			PaymentDate:      paymentDate,
+		}
+		if err := s.dividendRepo.Save(ctx, payout); err != nil {
+			log.Printf("[dividend] failed to persist actuary payout record: %v", err)
+		}
+		return nil
+	}
+
+	// Klijenti: normalan flow
 	accountNumber, finalCurrency, err := s.resolveTargetAccount(ctx, ownership, currencyCode)
 	if err != nil {
 		return fmt.Errorf("resolve account: %w", err)
 	}
 
-	// Tax: actuaries are exempt (bank profit), clients pay 15%
-	taxAmount := 0.0
-	isActuary := ownership.OwnerType == model.OwnerTypeActuary
-
-	// Convert gross to final currency if needed
 	payableGross := gross
 	if finalCurrency != currencyCode {
 		converted, err := s.bankingClient.ConvertCurrency(ctx, gross, currencyCode, finalCurrency)
@@ -137,53 +151,39 @@ func (s *DividendPayoutService) payOwner(
 		payableGross = converted
 	}
 
-	net := payableGross
-	if !isActuary {
-		taxAmount = payableGross * dividendTaxRate
-		net = payableGross - taxAmount
-	}
+	taxAmount := payableGross * dividendTaxRate
+	net := payableGross - taxAmount
 
-	// Execute payment
 	_, err = s.bankingClient.CreatePaymentWithoutVerification(ctx, &pb.CreatePaymentRequest{
 		RecipientAccountNumber: accountNumber,
-		// Dividend is paid from the bank's own account — the PayerAccountNumber
-		// must be the bank's dividend reserve account, configured via env.
-		// We reuse the TaxAccountNumber pattern; ideally a dedicated env var
-		// "DIVIDEND_ACCOUNT_NUMBER" should be added to config.
-		PayerAccountNumber: s.cfg.DividendAccountNumber,
-		RecipientName:      "Dividend payout",
-		Amount:             net,
-		PaymentCode:        "290",
-		Purpose:            fmt.Sprintf("Dividenda za akciju %s", stock.Asset.Ticker),
+		PayerAccountNumber:     s.cfg.DividendAccountNumber,
+		RecipientName:          "Dividend payout",
+		Amount:                 net,
+		PaymentCode:            "290",
+		Purpose:                fmt.Sprintf("Dividenda za akciju %s", stock.Asset.Ticker),
 	})
 	if err != nil {
 		return fmt.Errorf("payment failed: %w", err)
 	}
 
-	// Record tax for clients (feeds into monthly tax tracking)
-	if !isActuary && taxAmount > 0 {
-		if err := s.taxService.RecordTax(ctx, accountNumber, nil, gross, finalCurrency); err != nil {
-			// Non-fatal: log and continue; the payment already went through
+	if taxAmount > 0 {
+		if err := s.taxService.RecordTax(ctx, accountNumber, nil, payableGross, finalCurrency); err != nil {
 			log.Printf("[dividend] tax record failed for account %s: %v", accountNumber, err)
 		}
 	}
 
-	// Persist the payout record
 	payout := &model.DividendPayout{
-		UserID:        ownership.UserId,
-		OwnerType:     ownership.OwnerType,
-		StockID:       stock.StockID,
-		Quantity:      ownership.Amount,
-		PricePerShare: price,
-		GrossAmount:   payableGross,
-		TaxAmount:     taxAmount,
-		NetAmount:     net,
-		CurrencyCode:  finalCurrency,
-		AccountNumber: accountNumber,
-		PaymentDate:   paymentDate,
+		AssetOwnershipID: ownership.AssetOwnershipID,
+		Quantity:         ownership.Amount,
+		PricePerShare:    price,
+		GrossAmount:      payableGross,
+		TaxAmount:        taxAmount,
+		NetAmount:        net,
+		CurrencyCode:     finalCurrency,
+		AccountNumber:    accountNumber,
+		PaymentDate:      paymentDate,
 	}
 	if err := s.dividendRepo.Save(ctx, payout); err != nil {
-		// Payment already executed — just log, don't fail
 		log.Printf("[dividend] failed to persist payout record: %v", err)
 	}
 
@@ -256,9 +256,8 @@ func (s *DividendPayoutService) GetAllPayouts(ctx context.Context) ([]model.Divi
 	return payouts, nil
 }
 
-// GetPayoutsForUser returns dividend payouts for a specific user.
-func (s *DividendPayoutService) GetPayoutsForUser(ctx context.Context, userID uint, ownerType model.OwnerType) ([]model.DividendPayout, error) {
-	payouts, err := s.dividendRepo.FindAllByUserID(ctx, userID, ownerType)
+func (s *DividendPayoutService) GetPayoutsForAssetOwnership(ctx context.Context, assetOwnershipID uint) ([]model.DividendPayout, error) {
+	payouts, err := s.dividendRepo.FindAllByAssetOwnershipID(ctx, assetOwnershipID)
 	if err != nil {
 		return nil, commonerrors.InternalErr(err)
 	}

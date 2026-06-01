@@ -225,6 +225,8 @@ definitions:
     properties:
       accountNumber:
         type: string
+      assetOwnershipId:
+        type: integer
       currencyCode:
         type: string
       dividendPayoutId:
@@ -233,19 +235,14 @@ definitions:
         type: number
       netAmount:
         type: number
-      ownerType:
-        type: string
       paymentDate:
         type: string
       quantity:
         type: number
       stock:
-        description: ticker symbol e.g. "AAPL"
         type: string
       taxAmount:
         type: number
-      userId:
-        type: integer
     type: object
   dto.ExchangeResponse:
     properties:
@@ -1518,40 +1515,6 @@ paths:
       summary: Get total profit for an actuary portfolio
       tags:
       - portfolio
-  /api/actuary/{actId}/dividends:
-    get:
-      description: Returns dividend payout history for a specific actuary (employee).
-        Tax is 0 for actuaries.
-      parameters:
-      - description: Actuary ID
-        in: path
-        name: actId
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.ListDividendPayoutsResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/errors.AppError'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/errors.AppError'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/errors.AppError'
-      security:
-      - BearerAuth: []
-      summary: List dividend payouts for an actuary
-      tags:
-      - dividends
   /api/actuary/{actId}/options/{assetId}/exercise:
     post:
       consumes:
@@ -1774,40 +1737,6 @@ paths:
       summary: Get total profit for a client portfolio
       tags:
       - portfolio
-  /api/client/{clientId}/dividends:
-    get:
-      description: Returns dividend payout history for a specific client. The client
-        may only view their own payouts.
-      parameters:
-      - description: Client ID
-        in: path
-        name: clientId
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.ListDividendPayoutsResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/errors.AppError'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/errors.AppError'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/errors.AppError'
-      security:
-      - BearerAuth: []
-      summary: List dividend payouts for a client
-      tags:
-      - dividends
   /api/client/{clientId}/funds:
     get:
       description: Returns all investment fund positions for the specified client,
@@ -1865,6 +1794,27 @@ paths:
       security:
       - BearerAuth: []
       summary: List all dividend payouts
+      tags:
+      - dividends
+  /api/dividends/trigger:
+    post:
+      description: Forces immediate dividend processing. For internal use only.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/errors.AppError'
+      security:
+      - BearerAuth: []
+      summary: Manually trigger dividend payout
       tags:
       - dividends
   /api/exchanges:
@@ -3114,6 +3064,36 @@ paths:
       summary: List all publicly available OTC assets
       tags:
       - otc
+  /api/portfolio/assets/{assetOwnershipId}/dividends:
+    get:
+      description: Returns dividend payout history for a specific asset ownership
+        (position).
+      parameters:
+      - description: Asset Ownership ID
+        in: path
+        name: assetOwnershipId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ListDividendPayoutsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errors.AppError'
+      security:
+      - BearerAuth: []
+      summary: List dividend payouts for a portfolio position
+      tags:
+      - dividends
   /api/profit/actuaries:
     get:
       consumes:

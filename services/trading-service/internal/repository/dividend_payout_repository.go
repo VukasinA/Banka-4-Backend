@@ -8,10 +8,6 @@ import (
 
 type DividendPayoutRepository interface {
 	Save(ctx context.Context, payout *model.DividendPayout) error
-
-	FindAllByUserID(ctx context.Context, userID uint, ownerType model.OwnerType) ([]model.DividendPayout, error)
-
 	FindAll(ctx context.Context) ([]model.DividendPayout, error)
-
-	FindAllByStockID(ctx context.Context, stockID uint) ([]model.DividendPayout, error)
+	FindAllByAssetOwnershipID(ctx context.Context, assetOwnershipID uint) ([]model.DividendPayout, error)
 }

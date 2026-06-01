@@ -20,33 +20,22 @@ func (r *dividendPayoutRepository) Save(ctx context.Context, payout *model.Divid
 	return commondb.DBFromContext(ctx, r.db).Create(payout).Error
 }
 
-func (r *dividendPayoutRepository) FindAllByUserID(ctx context.Context, userID uint, ownerType model.OwnerType) ([]model.DividendPayout, error) {
-	var payouts []model.DividendPayout
-	err := commondb.DBFromContext(ctx, r.db).
-		Where("user_id = ? AND owner_type = ?", userID, ownerType).
-		Preload("Stock").
-		Preload("Stock.Asset").
-		Order("payment_date DESC").
-		Find(&payouts).Error
-	return payouts, err
-}
-
 func (r *dividendPayoutRepository) FindAll(ctx context.Context) ([]model.DividendPayout, error) {
 	var payouts []model.DividendPayout
 	err := commondb.DBFromContext(ctx, r.db).
-		Preload("Stock").
-		Preload("Stock.Asset").
+		Preload("AssetOwnership").
+		Preload("AssetOwnership.Asset").
 		Order("payment_date DESC").
 		Find(&payouts).Error
 	return payouts, err
 }
 
-func (r *dividendPayoutRepository) FindAllByStockID(ctx context.Context, stockID uint) ([]model.DividendPayout, error) {
+func (r *dividendPayoutRepository) FindAllByAssetOwnershipID(ctx context.Context, assetOwnershipID uint) ([]model.DividendPayout, error) {
 	var payouts []model.DividendPayout
 	err := commondb.DBFromContext(ctx, r.db).
-		Where("stock_id = ?", stockID).
-		Preload("Stock").
-		Preload("Stock.Asset").
+		Where("asset_ownership_id = ?", assetOwnershipID).
+		Preload("AssetOwnership").
+		Preload("AssetOwnership.Asset").
 		Order("payment_date DESC").
 		Find(&payouts).Error
 	return payouts, err

@@ -318,58 +318,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/actuary/{actId}/dividends": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Returns dividend payout history for a specific actuary (employee). Tax is 0 for actuaries.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "dividends"
-                ],
-                "summary": "List dividend payouts for an actuary",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Actuary ID",
-                        "name": "actId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ListDividendPayoutsResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/errors.AppError"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/errors.AppError"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/errors.AppError"
-                        }
-                    }
-                }
-            }
-        },
         "/api/actuary/{actId}/options/{assetId}/exercise": {
             "post": {
                 "security": [
@@ -706,58 +654,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/client/{clientId}/dividends": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Returns dividend payout history for a specific client. The client may only view their own payouts.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "dividends"
-                ],
-                "summary": "List dividend payouts for a client",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Client ID",
-                        "name": "clientId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ListDividendPayoutsResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/errors.AppError"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/errors.AppError"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/errors.AppError"
-                        }
-                    }
-                }
-            }
-        },
         "/api/client/{clientId}/funds": {
             "get": {
                 "security": [
@@ -843,6 +739,40 @@ const docTemplate = `{
                     },
                     "403": {
                         "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/dividends/trigger": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Forces immediate dividend processing. For internal use only.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "dividends"
+                ],
+                "summary": "Manually trigger dividend payout",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/errors.AppError"
                         }
@@ -2724,6 +2654,52 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/portfolio/assets/{assetOwnershipId}/dividends": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns dividend payout history for a specific asset ownership (position).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "dividends"
+                ],
+                "summary": "List dividend payouts for a portfolio position",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Asset Ownership ID",
+                        "name": "assetOwnershipId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ListDividendPayoutsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    }
+                }
+            }
+        },
         "/api/profit/actuaries": {
             "get": {
                 "security": [
@@ -3598,6 +3574,9 @@ const docTemplate = `{
                 "accountNumber": {
                     "type": "string"
                 },
+                "assetOwnershipId": {
+                    "type": "integer"
+                },
                 "currencyCode": {
                     "type": "string"
                 },
@@ -3610,9 +3589,6 @@ const docTemplate = `{
                 "netAmount": {
                     "type": "number"
                 },
-                "ownerType": {
-                    "type": "string"
-                },
                 "paymentDate": {
                     "type": "string"
                 },
@@ -3620,14 +3596,10 @@ const docTemplate = `{
                     "type": "number"
                 },
                 "stock": {
-                    "description": "ticker symbol e.g. \"AAPL\"",
                     "type": "string"
                 },
                 "taxAmount": {
                     "type": "number"
-                },
-                "userId": {
-                    "type": "integer"
                 }
             }
         },
