@@ -1270,12 +1270,12 @@ definitions:
   model.OwnerType:
     enum:
     - CLIENT
-    - ACTUARY
+    - BANK
     - FUND
     type: string
     x-enum-varnames:
     - OwnerTypeClient
-    - OwnerTypeActuary
+    - OwnerTypeBank
     - OwnerTypeFund
 info:
   contact: {}

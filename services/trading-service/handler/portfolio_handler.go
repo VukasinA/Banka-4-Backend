@@ -232,7 +232,7 @@ func (h *PortfolioHandler) ExerciseOption(c *gin.Context) {
 		return
 	}
 
-	resp, err := h.service.ExerciseOption(c.Request.Context(), uint(actID), model.OwnerTypeActuary, uint(assetID), req.AccountNumber)
+	resp, err := h.service.ExerciseOption(c.Request.Context(), uint(actID), model.OwnerTypeBank, uint(assetID), req.AccountNumber)
 	if err != nil {
 		_ = c.Error(err)
 		return

@@ -59,7 +59,7 @@ func (s *PortfolioService) GetClientPortfolio(ctx context.Context, clientID uint
 }
 
 func (s *PortfolioService) GetActuaryPortfolio(ctx context.Context, actuaryID uint) ([]dto.PortfolioAssetResponse, error) {
-	ownerships, err := s.ownershipRepo.FindByUserId(ctx, actuaryID, model.OwnerTypeActuary)
+	ownerships, err := s.ownershipRepo.FindByUserId(ctx, actuaryID, model.OwnerTypeBank)
 	if err != nil {
 		return nil, pkgerrors.InternalErr(err)
 	}
@@ -68,7 +68,7 @@ func (s *PortfolioService) GetActuaryPortfolio(ctx context.Context, actuaryID ui
 }
 
 func (s *PortfolioService) GetWholeBankPortfolio(ctx context.Context, actuaryID uint) ([]dto.PortfolioAssetResponse, error) {
-	ownerships, err := s.ownershipRepo.FindByOwnerType(ctx, model.OwnerTypeActuary)
+	ownerships, err := s.ownershipRepo.FindByOwnerType(ctx, model.OwnerTypeBank)
 	if err != nil {
 		return nil, pkgerrors.InternalErr(err)
 	}
@@ -254,7 +254,7 @@ func (s *PortfolioService) toRSD(ctx context.Context, amount float64, currency s
 }
 
 func (s *PortfolioService) ExerciseOption(ctx context.Context, userId uint, ownerType model.OwnerType, optionAssetID uint, accountNumber string) (*dto.ExerciseOptionResponse, error) {
-	if ownerType != model.OwnerTypeActuary {
+	if ownerType != model.OwnerTypeBank {
 		return nil, pkgerrors.ForbiddenErr("only actuaries can exercise options")
 	}
 

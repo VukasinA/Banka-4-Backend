@@ -447,7 +447,7 @@ func TestGetPortfolio_EmptyPortfolio_ZeroProfit(t *testing.T) {
 
 func TestExerciseOption_Success(t *testing.T) {
 	optionOwnership := makeOwnership(20, "AAPL:CALL:150.00", 200, 12.0)
-	optionOwnership.OwnerType = model.OwnerTypeActuary
+	optionOwnership.OwnerType = model.OwnerTypeBank
 	optionOwnership.Asset.AssetType = model.AssetTypeOption
 
 	ownershipRepo := &fakeAssetOwnershipRepo{ownerships: []model.AssetOwnership{optionOwnership}}
@@ -492,7 +492,7 @@ func TestExerciseOption_Success(t *testing.T) {
 	)
 	svc.now = func() time.Time { return time.Date(2025, 6, 4, 10, 0, 0, 0, time.UTC) }
 
-	resp, err := svc.ExerciseOption(context.Background(), 1, model.OwnerTypeActuary, 20, "444000100000000001")
+	resp, err := svc.ExerciseOption(context.Background(), 1, model.OwnerTypeBank, 20, "444000100000000001")
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 	require.Equal(t, uint(20), resp.OptionAssetID)
@@ -525,7 +525,7 @@ func TestExerciseOption_Success(t *testing.T) {
 
 func TestExerciseOption_ExpiredOption(t *testing.T) {
 	optionOwnership := makeOwnership(20, "AAPL:CALL:150.00", 100, 12.0)
-	optionOwnership.OwnerType = model.OwnerTypeActuary
+	optionOwnership.OwnerType = model.OwnerTypeBank
 	optionOwnership.Asset.AssetType = model.AssetTypeOption
 
 	svc := NewPortfolioService(
@@ -551,14 +551,14 @@ func TestExerciseOption_ExpiredOption(t *testing.T) {
 	)
 	svc.now = func() time.Time { return time.Date(2025, 6, 4, 10, 0, 0, 0, time.UTC) }
 
-	_, err := svc.ExerciseOption(context.Background(), 1, model.OwnerTypeActuary, 20, "444000100000000001")
+	_, err := svc.ExerciseOption(context.Background(), 1, model.OwnerTypeBank, 20, "444000100000000001")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "expired option")
 }
 
 func TestExerciseOption_NotInTheMoney(t *testing.T) {
 	optionOwnership := makeOwnership(20, "AAPL:CALL:150.00", 100, 12.0)
-	optionOwnership.OwnerType = model.OwnerTypeActuary
+	optionOwnership.OwnerType = model.OwnerTypeBank
 	optionOwnership.Asset.AssetType = model.AssetTypeOption
 
 	svc := NewPortfolioService(
@@ -583,14 +583,14 @@ func TestExerciseOption_NotInTheMoney(t *testing.T) {
 		&fakeUserServiceClient{identityResp: &pb.GetIdentityByUserIdResponse{IdentityId: 5}},
 	)
 
-	_, err := svc.ExerciseOption(context.Background(), 1, model.OwnerTypeActuary, 20, "444000100000000001")
+	_, err := svc.ExerciseOption(context.Background(), 1, model.OwnerTypeBank, 20, "444000100000000001")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "not in the money")
 }
 
 func TestExerciseOption_PutOptionRejected(t *testing.T) {
 	optionOwnership := makeOwnership(20, "AAPL:PUT:150.00", 100, 12.0)
-	optionOwnership.OwnerType = model.OwnerTypeActuary
+	optionOwnership.OwnerType = model.OwnerTypeBank
 	optionOwnership.Asset.AssetType = model.AssetTypeOption
 
 	svc := NewPortfolioService(
@@ -615,7 +615,7 @@ func TestExerciseOption_PutOptionRejected(t *testing.T) {
 		&fakeUserServiceClient{identityResp: &pb.GetIdentityByUserIdResponse{IdentityId: 5}},
 	)
 
-	_, err := svc.ExerciseOption(context.Background(), 1, model.OwnerTypeActuary, 20, "444000100000000001")
+	_, err := svc.ExerciseOption(context.Background(), 1, model.OwnerTypeBank, 20, "444000100000000001")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "only call options can be exercised")
 }
@@ -661,7 +661,7 @@ func TestGetActuaryPortfolio_ResolvesIdentityID(t *testing.T) {
 	const identityID = uint64(55)
 	ownership := makeOwnership(20, "MSFT", 5, 200.0)
 	ownership.UserId = uint(identityID)
-	ownership.OwnerType = model.OwnerTypeActuary
+	ownership.OwnerType = model.OwnerTypeBank
 
 	svc := newPortfolioSvc(
 		&fakeAssetOwnershipRepo{ownerships: []model.AssetOwnership{ownership}},
