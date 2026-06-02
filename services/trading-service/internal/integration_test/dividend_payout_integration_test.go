@@ -90,7 +90,7 @@ func TestGetAllDividendPayouts_Unauthorized(t *testing.T) {
 	requireStatus(t, rec, http.StatusUnauthorized)
 }
 
-// ── GET /api/portfolio/assets/:assetOwnershipId/dividends ──────────
+// ── GET /api/client/:clientId/assets/:assetOwnershipId/dividends ───
 
 func TestGetDividendPayoutsForAssetOwnership_ReturnsPayouts(t *testing.T) {
 	t.Parallel()
@@ -101,8 +101,9 @@ func TestGetDividendPayoutsForAssetOwnership_ReturnsPayouts(t *testing.T) {
 	listing := seedListing(t, db, uniqueValue(t, "TICK"), exchange.MicCode, model.AssetTypeStock, 100.0)
 	_ = seedStock(t, db, listing.ListingID)
 
+	const clientID = uint(1)
 	ownership := &model.AssetOwnership{
-		UserId:    1,
+		UserId:    clientID,
 		OwnerType: model.OwnerTypeClient,
 		AssetID:   listing.AssetID,
 		Amount:    10,
@@ -121,8 +122,8 @@ func TestGetDividendPayoutsForAssetOwnership_ReturnsPayouts(t *testing.T) {
 	}
 	require.NoError(t, db.Create(payout).Error)
 
-	path := fmt.Sprintf("/api/portfolio/assets/%d/dividends", ownership.AssetOwnershipID)
-	rec := performRequest(t, router, http.MethodGet, path, nil, authHeaderForClient(t, 1, 1))
+	path := fmt.Sprintf("/api/client/%d/assets/%d/dividends", clientID, ownership.AssetOwnershipID)
+	rec := performRequest(t, router, http.MethodGet, path, nil, authHeaderForClient(t, clientID, clientID))
 	requireStatus(t, rec, http.StatusOK)
 
 	resp := decodeResponse[dto.ListDividendPayoutsResponse](t, rec)
@@ -139,8 +140,9 @@ func TestGetDividendPayoutsForAssetOwnership_EmptyForUnknownOwnership(t *testing
 	db := setupTestDB(t)
 	router, _ := setupTestRouter(t, db)
 
-	// ownership ID 999999 ne postoji — treba da vrati prazan niz, ne grešku
-	rec := performRequest(t, router, http.MethodGet, "/api/portfolio/assets/999999/dividends", nil, authHeaderForClient(t, 1, 1))
+	const clientID = uint(1)
+	path := fmt.Sprintf("/api/client/%d/assets/999999/dividends", clientID)
+	rec := performRequest(t, router, http.MethodGet, path, nil, authHeaderForClient(t, clientID, clientID))
 	requireStatus(t, rec, http.StatusOK)
 
 	resp := decodeResponse[dto.ListDividendPayoutsResponse](t, rec)
@@ -156,15 +158,15 @@ func TestGetDividendPayoutsForAssetOwnership_MultiplePayouts(t *testing.T) {
 	listing := seedListing(t, db, uniqueValue(t, "TICK"), exchange.MicCode, model.AssetTypeStock, 100.0)
 	_ = seedStock(t, db, listing.ListingID)
 
+	const clientID = uint(1)
 	ownership := &model.AssetOwnership{
-		UserId:    1,
+		UserId:    clientID,
 		OwnerType: model.OwnerTypeClient,
 		AssetID:   listing.AssetID,
 		Amount:    10,
 	}
 	require.NoError(t, db.Create(ownership).Error)
 
-	// Seed 3 kvartalna isplata
 	for i := 0; i < 3; i++ {
 		p := &model.DividendPayout{
 			AssetOwnershipID: ownership.AssetOwnershipID,
@@ -179,8 +181,8 @@ func TestGetDividendPayoutsForAssetOwnership_MultiplePayouts(t *testing.T) {
 		require.NoError(t, db.Create(p).Error)
 	}
 
-	path := fmt.Sprintf("/api/portfolio/assets/%d/dividends", ownership.AssetOwnershipID)
-	rec := performRequest(t, router, http.MethodGet, path, nil, authHeaderForClient(t, 1, 1))
+	path := fmt.Sprintf("/api/client/%d/assets/%d/dividends", clientID, ownership.AssetOwnershipID)
+	rec := performRequest(t, router, http.MethodGet, path, nil, authHeaderForClient(t, clientID, clientID))
 	requireStatus(t, rec, http.StatusOK)
 
 	resp := decodeResponse[dto.ListDividendPayoutsResponse](t, rec)
@@ -196,8 +198,9 @@ func TestGetDividendPayoutsForAssetOwnership_DoesNotReturnOtherOwnershipsPayouts
 	listing := seedListing(t, db, uniqueValue(t, "TICK"), exchange.MicCode, model.AssetTypeStock, 100.0)
 	_ = seedStock(t, db, listing.ListingID)
 
+	const clientID = uint(1)
 	ownership1 := &model.AssetOwnership{
-		UserId:    1,
+		UserId:    clientID,
 		OwnerType: model.OwnerTypeClient,
 		AssetID:   listing.AssetID,
 		Amount:    10,
@@ -212,7 +215,6 @@ func TestGetDividendPayoutsForAssetOwnership_DoesNotReturnOtherOwnershipsPayouts
 	}
 	require.NoError(t, db.Create(ownership2).Error)
 
-	// Payout za ownership1
 	require.NoError(t, db.Create(&model.DividendPayout{
 		AssetOwnershipID: ownership1.AssetOwnershipID,
 		Quantity:         10,
@@ -224,7 +226,6 @@ func TestGetDividendPayoutsForAssetOwnership_DoesNotReturnOtherOwnershipsPayouts
 		AccountNumber:    "444000100000000001",
 	}).Error)
 
-	// Payout za ownership2
 	require.NoError(t, db.Create(&model.DividendPayout{
 		AssetOwnershipID: ownership2.AssetOwnershipID,
 		Quantity:         20,
@@ -236,9 +237,8 @@ func TestGetDividendPayoutsForAssetOwnership_DoesNotReturnOtherOwnershipsPayouts
 		AccountNumber:    "444000100000000002",
 	}).Error)
 
-	// Tražimo samo payoute za ownership1
-	path := fmt.Sprintf("/api/portfolio/assets/%d/dividends", ownership1.AssetOwnershipID)
-	rec := performRequest(t, router, http.MethodGet, path, nil, authHeaderForClient(t, 1, 1))
+	path := fmt.Sprintf("/api/client/%d/assets/%d/dividends", clientID, ownership1.AssetOwnershipID)
+	rec := performRequest(t, router, http.MethodGet, path, nil, authHeaderForClient(t, clientID, clientID))
 	requireStatus(t, rec, http.StatusOK)
 
 	resp := decodeResponse[dto.ListDividendPayoutsResponse](t, rec)
@@ -251,7 +251,9 @@ func TestGetDividendPayoutsForAssetOwnership_InvalidID(t *testing.T) {
 	db := setupTestDB(t)
 	router, _ := setupTestRouter(t, db)
 
-	rec := performRequest(t, router, http.MethodGet, "/api/portfolio/assets/abc/dividends", nil, authHeaderForClient(t, 1, 1))
+	const clientID = uint(1)
+	path := fmt.Sprintf("/api/client/%d/assets/abc/dividends", clientID)
+	rec := performRequest(t, router, http.MethodGet, path, nil, authHeaderForClient(t, clientID, clientID))
 	requireStatus(t, rec, http.StatusBadRequest)
 }
 
@@ -260,7 +262,57 @@ func TestGetDividendPayoutsForAssetOwnership_Unauthorized(t *testing.T) {
 	db := setupTestDB(t)
 	router, _ := setupTestRouter(t, db)
 
-	rec := performRequest(t, router, http.MethodGet, "/api/portfolio/assets/1/dividends", nil, "")
+	rec := performRequest(t, router, http.MethodGet, "/api/client/1/assets/1/dividends", nil, "")
+	requireStatus(t, rec, http.StatusUnauthorized)
+}
+
+// ── GET /api/actuary/:actId/assets/:assetOwnershipId/dividends ─────
+
+func TestGetActuaryDividendPayoutsForAssetOwnership_ReturnsPayouts(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router, _ := setupTestRouter(t, db)
+
+	exchange := seedExchange(t, db, uniqueValue(t, "MIC"))
+	listing := seedListing(t, db, uniqueValue(t, "TICK"), exchange.MicCode, model.AssetTypeStock, 100.0)
+	_ = seedStock(t, db, listing.ListingID)
+
+	const actuaryID = uint(10)
+	ownership := &model.AssetOwnership{
+		UserId:    actuaryID,
+		OwnerType: model.OwnerTypeActuary,
+		AssetID:   listing.AssetID,
+		Amount:    10,
+	}
+	require.NoError(t, db.Create(ownership).Error)
+
+	payout := &model.DividendPayout{
+		AssetOwnershipID: ownership.AssetOwnershipID,
+		Quantity:         10,
+		PricePerShare:    100,
+		GrossAmount:      25,
+		TaxAmount:        0,
+		NetAmount:        25,
+		CurrencyCode:     "RSD",
+		AccountNumber:    "444000000000000099",
+	}
+	require.NoError(t, db.Create(payout).Error)
+
+	path := fmt.Sprintf("/api/actuary/%d/assets/%d/dividends", actuaryID, ownership.AssetOwnershipID)
+	rec := performRequest(t, router, http.MethodGet, path, nil, authHeaderForSupervisor(t))
+	requireStatus(t, rec, http.StatusOK)
+
+	resp := decodeResponse[dto.ListDividendPayoutsResponse](t, rec)
+	require.Len(t, resp.Data, 1)
+	require.Equal(t, ownership.AssetOwnershipID, resp.Data[0].AssetOwnershipID)
+}
+
+func TestGetActuaryDividendPayoutsForAssetOwnership_Unauthorized(t *testing.T) {
+	t.Parallel()
+	db := setupTestDB(t)
+	router, _ := setupTestRouter(t, db)
+
+	rec := performRequest(t, router, http.MethodGet, "/api/actuary/10/assets/1/dividends", nil, "")
 	requireStatus(t, rec, http.StatusUnauthorized)
 }
 
@@ -273,7 +325,7 @@ func TestTriggerDividends_ProcessesAndSavesClientPayout(t *testing.T) {
 
 	exchange := seedExchange(t, db, uniqueValue(t, "MIC"))
 	listing := seedListing(t, db, uniqueValue(t, "TICK"), exchange.MicCode, model.AssetTypeStock, 200.0)
-	stock := seedStock(t, db, listing.ListingID) // DividendYield = 2.5
+	stock := seedStock(t, db, listing.ListingID)
 
 	ownership := &model.AssetOwnership{
 		UserId:    1,
@@ -290,8 +342,6 @@ func TestTriggerDividends_ProcessesAndSavesClientPayout(t *testing.T) {
 	require.NoError(t, db.Where("asset_ownership_id = ?", ownership.AssetOwnershipID).Find(&payouts).Error)
 	require.Len(t, payouts, 1)
 
-	// Formula: Quantity × Price × (DividendYield / 400)
-	// 100 × 200 × (2.5 / 400) = 125.0
 	require.InDelta(t, 125.0, payouts[0].GrossAmount, 0.001)
 	require.InDelta(t, 125.0*0.15, payouts[0].TaxAmount, 0.001)
 	require.InDelta(t, 125.0*0.85, payouts[0].NetAmount, 0.001)
@@ -321,7 +371,6 @@ func TestTriggerDividends_ActuaryPayoutGoesToBankAccount(t *testing.T) {
 	require.NoError(t, db.Where("asset_ownership_id = ?", ownership.AssetOwnershipID).Find(&payouts).Error)
 	require.Len(t, payouts, 1)
 
-	// Aktuar: nema poreza, ide na bankini račun
 	require.Equal(t, 0.0, payouts[0].TaxAmount)
 	require.Equal(t, payouts[0].GrossAmount, payouts[0].NetAmount)
 	require.Equal(t, "444000000000000099", payouts[0].AccountNumber)
@@ -335,7 +384,6 @@ func TestTriggerDividends_SkipsStockWithZeroDividendYield(t *testing.T) {
 	exchange := seedExchange(t, db, uniqueValue(t, "MIC"))
 	listing := seedListing(t, db, uniqueValue(t, "TICK"), exchange.MicCode, model.AssetTypeStock, 200.0)
 
-	// Stock sa DividendYield = 0
 	stock := &model.Stock{
 		AssetID:           listing.AssetID,
 		OutstandingShares: 1_000_000,
@@ -422,6 +470,5 @@ func TestTriggerDividends_MultipleOwnersGetSeparatePayouts(t *testing.T) {
 	require.NoError(t, db.Where("asset_ownership_id = ?", ownership2.AssetOwnershipID).Find(&payouts2).Error)
 	require.Len(t, payouts2, 1)
 
-	// ownership2 ima duplo više akcija, treba duplo veću dividendu
 	require.InDelta(t, payouts1[0].GrossAmount*2, payouts2[0].GrossAmount, 0.001)
 }
