@@ -190,46 +190,62 @@ func (s *DividendPayoutService) payOwner(
 	return nil
 }
 
-// resolveTargetAccount implements the fallback chain from the spec:
-//  1. Original account (the one used to buy the stock)
-//  2. Client's default account in the stock's currency
-//  3. Convert to RSD and use default RSD account
+// resolveTargetAccount implements the fallback chain:
+//  1. Account in the stock's currency
+//  2. RSD account
+//  3. Any available account
 func (s *DividendPayoutService) resolveTargetAccount(
 	ctx context.Context,
 	ownership model.AssetOwnership,
 	preferredCurrency string,
 ) (accountNumber string, currency string, err error) {
-	// We don't store the original purchase account on AssetOwnership directly,
-	// so we try to get the client's accounts and find one matching the currency.
 	accountsResp, err := s.bankingClient.GetAccountsByClientID(ctx, uint64(ownership.UserId))
 	if err != nil {
 		return "", "", fmt.Errorf("get client accounts: %w", err)
 	}
 
-	// 1. Look for an account in the preferred currency
+	type accountInfo struct {
+		number   string
+		currency string
+	}
+
+	var accounts []accountInfo
+
 	for _, acc := range accountsResp.Accounts {
 		accCurrency, err := s.bankingClient.GetAccountCurrency(ctx, acc.AccountNumber)
 		if err != nil {
 			continue
 		}
-		if accCurrency == preferredCurrency {
-			return acc.AccountNumber, preferredCurrency, nil
+
+		accounts = append(accounts, accountInfo{
+			number:   acc.AccountNumber,
+			currency: accCurrency,
+		})
+	}
+
+	// No usable accounts at all
+	if len(accounts) == 0 {
+		return "", "", commonerrors.InternalErr(
+			fmt.Errorf("no usable account found for user %d", ownership.UserId),
+		)
+	}
+
+	// 1. Preferred currency
+	for _, acc := range accounts {
+		if acc.currency == preferredCurrency {
+			return acc.number, acc.currency, nil
 		}
 	}
 
-	// 2. Fall back to RSD account
-	for _, acc := range accountsResp.Accounts {
-		accCurrency, err := s.bankingClient.GetAccountCurrency(ctx, acc.AccountNumber)
-		if err != nil {
-			continue
-		}
-		if accCurrency == "RSD" {
-			return acc.AccountNumber, "RSD", nil
+	// 2. RSD account
+	for _, acc := range accounts {
+		if acc.currency == "RSD" {
+			return acc.number, acc.currency, nil
 		}
 	}
 
-	// 3. No account found at all
-	return "", "", commonerrors.InternalErr(fmt.Errorf("no suitable account found for user %d", ownership.UserId))
+	// 3. Any account
+	return accounts[0].number, accounts[0].currency, nil
 }
 
 func (s *DividendPayoutService) resolveCurrencyForStock(_ context.Context, stock model.Stock) (string, error) {
