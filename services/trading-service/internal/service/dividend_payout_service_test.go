@@ -74,6 +74,9 @@ func (f *fakeDividendOwnershipRepo) UpdateOTCFields(_ context.Context, _ uint, _
 func (f *fakeDividendOwnershipRepo) FindAllByAssetIDs(_ context.Context, _ []uint) ([]model.AssetOwnership, error) {
 	return f.ownerships, f.findErr
 }
+func (f *fakeDividendOwnershipRepo) FindByOwnerType(_ context.Context, _ model.OwnerType) ([]model.AssetOwnership, error) {
+	return f.ownerships, f.findErr
+}
 
 // ── Fake Stock Repository ──────────────────────────────────────────
 
@@ -249,7 +252,7 @@ func TestProcessDividends_PaysSingleClientOwner(t *testing.T) {
 
 func TestProcessDividends_ActuaryPaysNoTax(t *testing.T) {
 	stock := makeDividendStock(4, 100.0)
-	ownership := makeDividendOwnership(2, model.OwnerTypeActuary, 50)
+	ownership := makeDividendOwnership(2, model.OwnerTypeBank, 50)
 	stockRepo := &fakeDividendStockRepo{stocks: []model.Stock{stock}}
 	ownershipRepo := &fakeDividendOwnershipRepo{ownerships: []model.AssetOwnership{ownership}}
 	dividendRepo := &fakeDividendRepo{}

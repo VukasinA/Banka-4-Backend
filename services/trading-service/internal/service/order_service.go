@@ -1440,7 +1440,7 @@ func (s *OrderService) CreateSystemOrder(ctx context.Context, p SystemOrderParam
 		OrderOwnerType:   p.OwnerType,
 		AssetOwnerUserID: p.OwnerUserID,
 		AssetOwnerType:   p.OwnerType,
-		CommissionExempt: p.OwnerType == model.OwnerTypeActuary,
+		CommissionExempt: p.OwnerType == model.OwnerTypeBank,
 		account:          account,
 	})
 }

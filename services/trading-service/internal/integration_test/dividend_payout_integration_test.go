@@ -280,7 +280,7 @@ func TestGetActuaryDividendPayoutsForAssetOwnership_ReturnsPayouts(t *testing.T)
 	const actuaryID = uint(10)
 	ownership := &model.AssetOwnership{
 		UserId:    actuaryID,
-		OwnerType: model.OwnerTypeActuary,
+		OwnerType: model.OwnerTypeBank,
 		AssetID:   listing.AssetID,
 		Amount:    10,
 	}
@@ -358,7 +358,7 @@ func TestTriggerDividends_ActuaryPayoutGoesToBankAccount(t *testing.T) {
 
 	ownership := &model.AssetOwnership{
 		UserId:    10, // EmployeeID supervizora
-		OwnerType: model.OwnerTypeActuary,
+		OwnerType: model.OwnerTypeBank,
 		AssetID:   stock.AssetID,
 		Amount:    100,
 	}

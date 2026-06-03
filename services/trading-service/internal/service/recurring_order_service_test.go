@@ -115,7 +115,7 @@ func TestCreateRecurringOrder_Success_Employee(t *testing.T) {
 	ro, err := svc.CreateRecurringOrder(ctx, req)
 	require.NoError(t, err)
 	require.NotNil(t, ro)
-	require.Equal(t, model.OwnerTypeActuary, ro.OwnerType)
+	require.Equal(t, model.OwnerTypeBank, ro.OwnerType)
 	require.Equal(t, uint(20), ro.UserID)
 }
 
@@ -367,7 +367,7 @@ func TestOwnsRecurringOrder_Client_WrongUser(t *testing.T) {
 func TestOwnsRecurringOrder_Employee_Owns(t *testing.T) {
 	eid := uint(20)
 	authCtx := &auth.AuthContext{IdentityType: auth.IdentityEmployee, EmployeeID: &eid}
-	ro := &model.RecurringOrder{UserID: 20, OwnerType: model.OwnerTypeActuary}
+	ro := &model.RecurringOrder{UserID: 20, OwnerType: model.OwnerTypeBank}
 	require.True(t, ownsRecurringOrder(authCtx, ro))
 }
 

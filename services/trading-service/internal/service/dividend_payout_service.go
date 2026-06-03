@@ -115,7 +115,7 @@ func (s *DividendPayoutService) payOwner(
 		return nil
 	}
 
-	isBankOwned := ownership.OwnerType == model.OwnerTypeActuary || ownership.OwnerType == model.OwnerTypeFund
+	isBankOwned := ownership.OwnerType == model.OwnerTypeBank || ownership.OwnerType == model.OwnerTypeFund
 
 	// Aktuari i fondovi: dividenda ide u profit banke, nema eksternog transfera
 	if isBankOwned {

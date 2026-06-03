@@ -43,7 +43,7 @@ func (s *RecurringOrderService) CreateRecurringOrder(ctx context.Context, req dt
 	ownerType := model.OwnerTypeClient
 	userID := authCtx.ClientID
 	if authCtx.IdentityType == auth.IdentityEmployee {
-		ownerType = model.OwnerTypeActuary
+		ownerType = model.OwnerTypeBank
 		userID = authCtx.EmployeeID
 	}
 	if userID == nil {
@@ -106,7 +106,7 @@ func (s *RecurringOrderService) GetMyRecurringOrders(ctx context.Context) ([]mod
 	ownerType := model.OwnerTypeClient
 	userID := authCtx.ClientID
 	if authCtx.IdentityType == auth.IdentityEmployee {
-		ownerType = model.OwnerTypeActuary
+		ownerType = model.OwnerTypeBank
 		userID = authCtx.EmployeeID
 	}
 	if userID == nil {
@@ -154,7 +154,7 @@ func ownsRecurringOrder(authCtx *auth.AuthContext, ro *model.RecurringOrder) boo
 		return authCtx.ClientID != nil && *authCtx.ClientID == ro.UserID && ro.OwnerType == model.OwnerTypeClient
 	}
 	if authCtx.IdentityType == auth.IdentityEmployee {
-		return authCtx.EmployeeID != nil && *authCtx.EmployeeID == ro.UserID && ro.OwnerType == model.OwnerTypeActuary
+		return authCtx.EmployeeID != nil && *authCtx.EmployeeID == ro.UserID && ro.OwnerType == model.OwnerTypeBank
 	}
 	return false
 }
